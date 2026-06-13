@@ -1,0 +1,44 @@
+# Archivos compilados de .NET
+bin/
+obj/
+out/
+*.dll
+*.exe
+*.exe.config
+*.pdb
+
+# Archivos específicos de Visual Studio
+.vs/
+*.user
+*.suo
+*.userprefs
+*.csproj.user
+
+# Archivos de configuración local
+appsettings.Development.json
+appsettings.Local.json
+
+# Dependencias (si usas packages)
+packages/
+*.nupkg
+
+# Archivos de logs y temporales
+logs/
+*.log
+*.tmp
+*.temp
+
+# Archivos del sistema
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Si descargas videos en la carpeta del proyecto
+*.mp4
+*.mkv
+*.webm
+*.mp3
+
+# Archivos de publicación
+publish/
+*.nupkg
