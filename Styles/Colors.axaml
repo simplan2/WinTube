@@ -1,0 +1,28 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--  Add Resources Here  -->
+
+    <!--  Colores base  -->
+    <SolidColorBrush x:Key="BackgroundPrimary">#1A1A1A</SolidColorBrush>
+    <SolidColorBrush x:Key="BackgroundBarTitle">#000000</SolidColorBrush>
+    <SolidColorBrush x:Key="BackgroundSecondary">#252525</SolidColorBrush>
+    <SolidColorBrush x:Key="BackgroundCard">#2D2D2D</SolidColorBrush>
+    <SolidColorBrush x:Key="BackgroundHover">#3D3D3D</SolidColorBrush>
+
+    <!--Colores de texto-->  
+    <SolidColorBrush x:Key="TextPrimary">#FFFFFF</SolidColorBrush>
+    <SolidColorBrush x:Key="TextSecondary">#B3B3B3</SolidColorBrush>
+    <SolidColorBrush x:Key="TextTertiary">#808080</SolidColorBrush>
+
+      <!--Colores acento-->  
+    <SolidColorBrush x:Key="AccentPrimary">#9B59B6</SolidColorBrush>
+    <SolidColorBrush x:Key="AccentSecondary">#E91E63</SolidColorBrush>
+    <SolidColorBrush x:Key="AccentSuccess">#4CAF50</SolidColorBrush>
+
+      <!--Colores de progreso-->  
+    <SolidColorBrush x:Key="ProgressBackground">#3D3D3D</SolidColorBrush>
+    <SolidColorBrush x:Key="ProgressValue">#E91E63</SolidColorBrush>
+
+      <!--Colores de borde-->  
+    <SolidColorBrush x:Key="BorderDefault">#3D3D3D</SolidColorBrush>
+    <SolidColorBrush x:Key="BorderLight">#4D4D4D</SolidColorBrush>
+</ResourceDictionary>

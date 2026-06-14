@@ -1,0 +1,94 @@
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Design.PreviewWith>
+        <Border Padding="20">
+            <!--  Add Controls for Previewer Here  -->
+        </Border>
+    </Design.PreviewWith>
+
+
+
+    <!--  Add Styles Here  -->
+    <!--  Estilo para botón principal (gradiente)  -->
+    <Style Selector="Button.Primary">
+        <Setter Property="Background">
+            <LinearGradientBrush>
+                <GradientStop Offset="0" Color="#9B59B6" />
+                <GradientStop Offset="1" Color="#E91E63" />
+            </LinearGradientBrush>
+        </Setter>
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Padding" Value="20,10" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="BorderThickness" Value="0" />
+
+        <!--  Efecto hover  -->
+        <Style.Animations>
+            <Animation Duration="0:0:0.2">
+                <KeyFrame Cue="0%">
+                    <Setter Property="Opacity" Value="1" />
+                </KeyFrame>
+                <KeyFrame Cue="100%">
+                    <Setter Property="Opacity" Value="0.9" />
+                </KeyFrame>
+            </Animation>
+        </Style.Animations>
+    </Style>
+
+    <!--  Estilo para TextBox moderno  -->
+    <Style Selector="TextBox.Modern">
+        <Setter Property="Background" Value="#2D2D2D" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="BorderBrush" Value="#3D3D3D" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="12,10" />
+        <Setter Property="FontSize" Value="13" />
+
+        <!--  Focus effect  -->
+        <!--<Style Selector="TextBox.Modern:focus">
+        -->
+        <!--<Setter Property="BorderBrush" Value="#9B59B6" />-->
+        <!--
+        -->
+        <!--<Setter Property="BorderThickness" Value="2" />-->
+        <!--
+        </Style>-->
+    </Style>
+
+    <!--  Estilo para tarjetas  -->
+    <Style Selector="Border.Card">
+        <Setter Property="Background" Value="#2D2D2D" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="BorderBrush" Value="#3D3D3D" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Margin" Value="10" />
+        <Setter Property="Padding" Value="15" />
+    </Style>
+
+    <!--  Estilo para botón de descarga (versión pequeña en lista)  -->
+    <Style Selector="Button.DownloadItem">
+        <Setter Property="Background" Value="#9B59B6" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="Cursor" Value="Hand" />
+
+        <!--<Style Selector="Button.DownloadItem:pointerover">
+            <Setter Property="Background" Value="#E91E63" />
+        </Style>-->
+    </Style>
+
+    <!--  Estilo para ScrollBar  -->
+    <Style Selector="ScrollBar">
+        <Setter Property="Background" Value="#252525" />
+    </Style>
+
+    <Style Selector="ScrollBar Thumb">
+        <Setter Property="Background" Value="#9B59B6" />
+        <Setter Property="CornerRadius" Value="5" />
+    </Style>
+</Styles>

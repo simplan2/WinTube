@@ -7,6 +7,26 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
+	
+  <ItemGroup>
+    <AvaloniaXaml Remove="Styles\Colors.axaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="Tools\ffmpeg.exe" />
+    <None Remove="Tools\yt-dlp.exe" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Styles\Colors.axaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Tools\ffmpeg.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Tools\yt-dlp.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.0.4" />
     <PackageReference Include="Avalonia.Desktop" Version="12.0.4" />
@@ -16,5 +36,7 @@
       <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Deadpikle.AvaloniaProgressRing" Version="0.11.0" />
   </ItemGroup>
 </Project>
