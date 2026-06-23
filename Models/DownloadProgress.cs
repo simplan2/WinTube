@@ -13,5 +13,7 @@ namespace WinTube.Models
         public string Eta { get; set; } = "";
 
         public string Status { get; set; } = "";
+
+        public string TotalSize { get; set; } = "";
     }
 }

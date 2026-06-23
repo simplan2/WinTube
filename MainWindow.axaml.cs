@@ -91,20 +91,21 @@ public partial class MainWindow : Window
     private void UpdateWindowCornerRadius()
     {
         var mainBorder = this.FindControl<Border>("MainBorder");
+        var barTitleBorder = this.FindControl<Border>("BarTitleBorder");
         if (mainBorder != null)
         {
             if (WindowState == WindowState.Maximized)
             {
                 // Sin esquinas redondeadas cuando está maximizada
-                mainBorder.CornerRadius = new CornerRadius(0);               
-                BarTitleBorder.CornerRadius = new CornerRadius(0);
+                mainBorder.CornerRadius = new CornerRadius(0);
+                barTitleBorder.CornerRadius = new CornerRadius(0);
 
             }
             else
             {
                 // Restaurar esquinas redondeadas en modo normal
-                mainBorder.CornerRadius = new CornerRadius(12);
-                BarTitleBorder.CornerRadius = new CornerRadius(12,12,0,0);
+                mainBorder.CornerRadius = new CornerRadius(8);
+                barTitleBorder.CornerRadius = new CornerRadius(8,8,0,0);
             }
         }
     }

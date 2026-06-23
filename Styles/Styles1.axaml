@@ -20,7 +20,7 @@
         <Setter Property="FontWeight" Value="Bold" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Padding" Value="20,10" />
-        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="CornerRadius" Value="5" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="BorderThickness" Value="0" />
 
@@ -39,9 +39,9 @@
 
     <!--  Estilo para TextBox moderno  -->
     <Style Selector="TextBox.Modern">
-        <Setter Property="Background" Value="#2D2D2D" />
+        <Setter Property="Background" Value="#070707" />
         <Setter Property="Foreground" Value="#FFFFFF" />
-        <Setter Property="BorderBrush" Value="#3D3D3D" />
+        <Setter Property="BorderBrush" Value="#3C3C3C" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="8" />
         <Setter Property="Padding" Value="12,10" />
@@ -62,15 +62,14 @@
     <Style Selector="Border.Card">
         <Setter Property="Background" Value="#2D2D2D" />
         <Setter Property="CornerRadius" Value="10" />
-        <Setter Property="BorderBrush" Value="#3D3D3D" />
+        <Setter Property="BorderBrush" Value="#3C3C3C" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Margin" Value="10" />
-        <Setter Property="Padding" Value="15" />
     </Style>
 
     <!--  Estilo para botón de descarga (versión pequeña en lista)  -->
     <Style Selector="Button.DownloadItem">
-        <Setter Property="Background" Value="#9B59B6" />
+        <Setter Property="Background" Value="#393A3C" />
         <Setter Property="Foreground" Value="#FFFFFF" />
         <Setter Property="FontSize" Value="11" />
         <Setter Property="Padding" Value="8,4" />
@@ -83,12 +82,52 @@
     </Style>
 
     <!--  Estilo para ScrollBar  -->
-    <Style Selector="ScrollBar">
+    <!--<Style Selector="ScrollBar">
         <Setter Property="Background" Value="#252525" />
     </Style>
 
     <Style Selector="ScrollBar Thumb">
         <Setter Property="Background" Value="#9B59B6" />
         <Setter Property="CornerRadius" Value="5" />
+    </Style>-->
+
+    <Style Selector="Button.PauseButton">
+        <Setter Property="Background" Value="#FFB300" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="FontWeight" Value="Bold" />
     </Style>
+
+    <Style Selector="Button.PauseButton:pointerover">
+        <Setter Property="Background" Value="#FFC107" />
+    </Style>
+
+	<Style Selector="Button.CancelButton">
+		<Setter Property="Background" Value="#C62828"/>
+		<Setter Property="Foreground" Value="White"/>
+		<Setter Property="Padding" Value="12,6"/>
+		<Setter Property="CornerRadius" Value="6"/>
+		<Setter Property="FontWeight" Value="Bold"/>
+	</Style>
+
+	<Style Selector="Button.CancelButton:pointerover">
+		<Setter Property="Background" Value="#E53935"/>
+	</Style>
+
+	<Style Selector="Button.AccentButton">
+		<Setter Property="Background" Value="#0078D7"/>
+		<Setter Property="Foreground" Value="White"/>
+		<Setter Property="CornerRadius" Value="6"/>
+	</Style>
+
+	<Style Selector="Button.DangerButton">
+		<Setter Property="Background" Value="#D83B01"/>
+		<Setter Property="Foreground" Value="White"/>
+		<Setter Property="CornerRadius" Value="6"/>
+	</Style>
+
+	<Style Selector="ListBoxItem:selected /template/ Border#Bd">
+		<Setter Property="BorderBrush" Value="#4CAF50"/>
+	</Style>
 </Styles>

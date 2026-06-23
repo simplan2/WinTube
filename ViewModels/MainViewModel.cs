@@ -4,12 +4,15 @@ using CommunityToolkit.Mvvm.Input;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using WinTube.Helpers;
@@ -23,10 +26,9 @@ namespace WinTube.ViewModels
         #region Fields 
         private readonly DownloadService downloadService = new();
         private readonly YoutubeService youtubeService = new();
-        private DownloadItem? currentItem;
-
-        private bool isDownloading = false;
+        private DownloadItem? currentItem;    
         private readonly object lockObj = new();
+        private CancellationTokenSource? _cts;
         #endregion
 
         #region Properties
@@ -38,12 +40,7 @@ namespace WinTube.ViewModels
 
         [ObservableProperty]
         private string title = "";
-
-        [ObservableProperty]
-        private string status = "";
-
-        public string MyStatus => "FUNCIONA MVVM";
-
+          
         [ObservableProperty]
         private ObservableCollection<FormatItem> formats = new();
 
@@ -55,12 +52,22 @@ namespace WinTube.ViewModels
 
         [ObservableProperty]
         private bool isAnalyzing = false;
+
+        [ObservableProperty]
+        private bool hasFormats = false;
+
+        public bool IsDownloadsEmpty => Downloads.Count == 0;
+
+        [ObservableProperty] private bool isDownloading;
+        [ObservableProperty] private bool isPaused;
+        [ObservableProperty] private string status = "Estado";
         #endregion
 
         #region Constructors
         public MainViewModel()
         {
-            downloadService.ProgressChanged += OnProgress;
+            downloadService.ProgressChanged += OnDownloadProgressChanged;
+            Downloads.CollectionChanged += Downloads_CollectionChanged;
         }
         #endregion
 
@@ -122,14 +129,14 @@ namespace WinTube.ViewModels
                     long size = video.FileSize ?? video.FileSizeApprox ?? 0;
 
                     // 1. Obtener Ancho y Alto de forma segura
-                    int ancho = video.Width ?? 0;
-                    int alto = video.Height ?? 0;
+                    int width = video.Width ?? 0;
+                    int heigth = video.Height ?? 0;
 
                     // 2. Determinar la etiqueta de calidad base (ej: 720p, 1080p) basada en el alto
-                    string qualityLabel = GetQualityLabel(alto);
+                    string qualityLabel = GetQualityLabel(heigth);
 
                     // 3. Formatear la resolución exacta si ambos valores existen
-                    string resolutionExact = (ancho > 0 && alto > 0) ? $" {ancho}x{alto}" : "";
+                    string resolutionExact = (width > 0 && heigth > 0) ? $" {width}x{heigth}" : "";
 
                     // 4. Formatear el tamaño de descarga
                     string sizeLabel = size > 0 ? $" - [{DownloadHelper.FormatSize(size)}]" : " - Tamaño desconocido";
@@ -148,8 +155,8 @@ namespace WinTube.ViewModels
                     Formats.Add(new FormatItem
                     {
                         FormatId = video.FormatId ?? "",
-                        Height = alto,
-                        Width = ancho, // Asegúrate de guardar el Width en tu FormatItem si lo necesitas después
+                        Height = heigth,
+                        Width = width, // Asegúrate de guardar el Width en tu FormatItem si lo necesitas después
                         IsAudio = false,
                         Extension = video.Ext ?? "",
                         Label = label,
@@ -216,10 +223,13 @@ namespace WinTube.ViewModels
                     SelectedFormat = Formats.First();
                     SelectedFormat.IsSelected = true;
                 }
+
+                HasFormats = true;
             }
             catch (Exception ex)
             {
                 Status = $"Error: {ex.Message}";
+                HasFormats = false;
             }
             finally
             {
@@ -234,24 +244,7 @@ namespace WinTube.ViewModels
             Thumbnail = null;
             SelectedFormat = null;
             Formats.Clear();
-        }
-
-        [RelayCommand]
-        private async Task Download()
-        {
-            if (string.IsNullOrWhiteSpace(Url))
-                return;
-
-            Downloads.Add(new DownloadItem
-            {
-                Url = Url,
-                Title = Title,
-                Progress = 0,
-                Status = "En cola",
-                SelectedFormat = SelectedFormat
-            });
-
-            Url = "";
+            HasFormats = false;
         }
 
         [RelayCommand]
@@ -259,13 +252,27 @@ namespace WinTube.ViewModels
         {
             if (string.IsNullOrWhiteSpace(Url))
                 return;
+            if (SelectedFormat == null) return;
+
+            var formatInfo = string.Empty;
+            if (SelectedFormat.IsAudio)
+            {
+                formatInfo = $"Audio {SelectedFormat.Extension.ToUpper()}";
+            }
+            else
+            {
+                formatInfo = $"{SelectedFormat.Height}p {SelectedFormat.Extension.ToUpper()}";
+            }
+
 
             Downloads.Add(new DownloadItem
             {
                 Url = Url,
                 Title = Title,
                 Progress = 0,
-                Status = "En cola",
+                Format = formatInfo,
+                Thumbnail = Thumbnail,
+                Status = DownloadStatus.InQueue,
                 SelectedFormat = SelectedFormat
             });
 
@@ -275,11 +282,14 @@ namespace WinTube.ViewModels
         [RelayCommand]
         private async Task StartQueue()
         {
-            if (isDownloading)
+            if (IsDownloading)
                 return;
 
-            isDownloading = true;
+            IsDownloading = true;
+            IsPaused = false;
+            _cts = new CancellationTokenSource();
 
+            // Crear carpeta de salida en el escritorio
             string output = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
                 "YoutubeDownloads");
@@ -290,50 +300,104 @@ namespace WinTube.ViewModels
 
                 foreach (var item in Downloads)
                 {
-                    if (item.Progress >= 100)
+                    if (item.Progress >= 100 || item.Status == DownloadStatus.Completed)
                         continue;
 
                     currentItem = item;
-
-                    item.Status = "Descargando...";
-                    item.Progress = 0;
+                    currentItem.Status = DownloadStatus.Downloading;
+                    //item.Progress = 0;
 
                     if (item.SelectedFormat == null)
-                    {
-                        item.Status = "Formato no seleccionado";
+                    {                 
                         continue;
                     }
 
+                    // Descargar el video usando el servicio
                     await downloadService.DownloadVideo(
                         item.Url,
                         item.SelectedFormat,
-                        output);
-                    Status = "Completado...";
+                        output,
+                        _cts.Token);
+
+          
+                    Status = "Descarga terminada...";
+                    currentItem.Status = DownloadStatus.Completed;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Status = "Descarga cancelada";
+                if (currentItem != null && currentItem.Progress < 100)
+                {
+                    currentItem.Status = DownloadStatus.Canceled;
                 }
             }
             catch (Exception ex)
             {
                 Status = $"ERROR: {ex.Message}";
+                if (currentItem != null) currentItem.Status = DownloadStatus.Failed;
             }
             finally
             {
                 currentItem = null;
-                isDownloading = false;
+                IsDownloading = false;
+                IsPaused = false;
+                _cts.Dispose();
+                _cts = null;
             }
 
+        }
+
+        [RelayCommand]
+        private void PauseQueue()
+        {
+            if (!IsDownloading || IsPaused)
+                return;
+
+            downloadService.Pause();
+            IsPaused = true;
+            if (currentItem != null)
+            {
+                currentItem.Status = DownloadStatus.Paused;
+            }
+
+            Status = "Descarga pausada";
+        }
+
+        [RelayCommand]
+        private void ResumeQueue()
+        {
+            if (!IsDownloading || !IsPaused)
+                return;
+
+            downloadService.Resume();
+            IsPaused = false;
+            if (currentItem != null)
+            {
+                currentItem.Status = DownloadStatus.Downloading;
+            }
+            Status = "Descarga reanudada";
+        }
+
+        [RelayCommand]
+        private void CancelQueue()
+        {           
+            _cts?.Cancel();
         }
         #endregion
 
         #region Methods
-        private void OnProgress(DownloadProgress p)
+        private void OnDownloadProgressChanged(DownloadProgress progress)
         {
             lock (lockObj)
             {
                 if (currentItem == null)
                     return;
 
-                currentItem.Progress = p.Percentage;
-                currentItem.Status = $"Descargando {p.Speed} | ETA {p.Eta}";
+                currentItem.Progress = progress.Percentage;
+                currentItem.ProgressMessage = IsPaused
+                    ? "Pausado"
+                    : $"{progress.Speed} | ETA {progress.Eta}";
             }
         }
 
@@ -406,6 +470,11 @@ namespace WinTube.ViewModels
             }
 
             return url;
+        }
+
+        private void Downloads_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {            
+            base.OnPropertyChanged(nameof(IsDownloadsEmpty));
         }
         #endregion
     }

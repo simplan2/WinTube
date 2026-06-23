@@ -8,7 +8,7 @@
     xmlns:vm="clr-namespace:WinTube.ViewModels"
     Title="WinTube"
     Width="1080"
-    Height="680"
+    Height="740"
     d:DesignHeight="480"
     d:DesignWidth="900"
     x:DataType="vm:MainViewModel"
@@ -26,9 +26,9 @@
     <Border
         x:Name="MainBorder"
         Background="{DynamicResource BackgroundPrimary}"
-        BorderBrush="#3D3D3D"
+        BorderBrush="#08090A"
         BorderThickness="1"
-        CornerRadius="12">
+        CornerRadius="8">
 
         <!--<Border.Effects>
             <DropShadowEffect
@@ -39,7 +39,7 @@
                 Color="Black" />
         </Border.Effects>-->
 
-        <Grid ColumnDefinitions="*" RowDefinitions="50,Auto, Auto, *">
+        <Grid ColumnDefinitions="*" RowDefinitions="40,Auto, Auto, *">
 
             <!--  Barra de título personalizada  -->
             <!--  ========================================  -->
@@ -49,7 +49,7 @@
                 x:Name="BarTitleBorder"
                 Grid.Row="0"
                 Background="{DynamicResource BackgroundBarTitle}"
-                CornerRadius="12,12,0,0">
+                CornerRadius="8,8,0,0">
 
                 <Grid
                     Background="Transparent"
@@ -69,11 +69,11 @@
                         Orientation="Horizontal"
                         Spacing="10">
 
-                        <TextBlock
+                        <Image
+                            Width="18"
+                            Height="18"
                             VerticalAlignment="Center"
-                            FontSize="16"
-                            Text="🎬" />
-
+                            Source="avares://WinTube/Assets/icon.png" />
                         <TextBlock
                             VerticalAlignment="Center"
                             FontSize="14"
@@ -155,12 +155,14 @@
                 <TextBox
                     HorizontalContentAlignment="Left"
                     VerticalContentAlignment="Center"
+                    Classes="Modern"
                     Text="{Binding Url}"
                     Watermark="Ingrese URL de YouTube..." />
                 <Button
                     Grid.Column="1"
                     Height="40"
-                    Margin="16,0,0,0"
+                    MinWidth="160"
+                    Margin="10,0,0,0"
                     Padding="30,0"
                     HorizontalContentAlignment="Center"
                     VerticalContentAlignment="Center"
@@ -175,73 +177,90 @@
                 </Button>
             </Grid>
 
-            <!--  Vista previa del video  -->
+            <!--  Vista de in formacion  -->
             <Grid
                 Grid.Row="2"
                 Height="330"
                 Margin="20"
                 ColumnDefinitions="542,*">
 
+                <!--  Vista previa del video  -->
                 <Border
-                    Padding="10"
-                    BorderBrush="Gray"
+                    BorderBrush="{DynamicResource BorderDefault}"
                     BorderThickness="1"
-                    CornerRadius="15">
+                    CornerRadius="10">
 
-                    <Grid>
+                    <Border
+                        Margin="10"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        Background="#262626"
+                        CornerRadius="8">
 
-                        <Image Source="{Binding Thumbnail}" Stretch="UniformToFill">
-                            <Image.Clip>
-                                <RectangleGeometry
-                                    RadiusX="15"
-                                    RadiusY="15"
-                                    Rect="0,0,522,306" />
-                            </Image.Clip>
-                        </Image>
+                        <Grid>
+                            <Grid IsVisible="{Binding !IsAnalyzing}">
 
-                        <!--  Overlay inferior con gradient y texto  -->
-                        <Grid
-                            Height="80"
-                            Margin="4,0,4,8"
-                            VerticalAlignment="Bottom">
-                            <!--  Fondo degradado con esquinas redondeadas  -->
-                            <Rectangle>
-                                <Rectangle.Fill>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                        <GradientStop Offset="0" Color="#00000000" />
-                                        <!--  Transparente arriba  -->
-                                        <GradientStop Offset="1" Color="#AA000000" />
-                                        <!--  Negro semi-transparente abajo  -->
-                                    </LinearGradientBrush>
-                                </Rectangle.Fill>
-                                <Rectangle.Clip>
-                                    <RectangleGeometry
-                                        RadiusX="15"
-                                        RadiusY="15"
-                                        Rect="0,0,512,80" />
-                                </Rectangle.Clip>
-                            </Rectangle>
+                                <!--  Imagen del video  -->
+                                <Image Source="{Binding Thumbnail}" Stretch="UniformToFill">
+                                    <Image.Clip>
+                                        <RectangleGeometry
+                                            RadiusX="8"
+                                            RadiusY="8"
+                                            Rect="0,0,522,310" />
+                                    </Image.Clip>
+                                </Image>
 
-                            <!--  Título del video  -->
-                            <TextBlock
-                                Margin="16,0,16,0"
-                                VerticalAlignment="Center"
-                                FontSize="20"
-                                FontWeight="Bold"
-                                Foreground="White"
-                                Text="{Binding Title}"
-                                TextWrapping="Wrap" />
-                        </Grid>
+                                <!--  Placeholder (visible solo cuando no hay imagen)  -->
+                                <Border CornerRadius="8" IsVisible="{Binding Thumbnail, Converter={StaticResource IsNullConverter}}">
+                                    <Image
+                                        Height="64"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Source="avares://WinTube/Assets/video-placeholder.png" />
+                                </Border>
 
-                        <!--  Overlay de Busy  -->
-                        <Border
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Stretch"
-                            Background="#80000000"
-                            IsVisible="{Binding IsAnalyzing}">
+                                <!--  Overlay inferior con gradient y texto  -->
+
+                                <Grid
+                                    Height="80"
+                                    Margin="4,0,4,4"
+                                    VerticalAlignment="Bottom"
+                                    IsVisible="{Binding Thumbnail, Converter={StaticResource IsNotNullConverter}}">
+                                    <!--  Fondo degradado con esquinas redondeadas  -->
+                                    <Rectangle>
+                                        <Rectangle.Fill>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                <GradientStop Offset="0" Color="#00000000" />
+                                                <!--  Transparente arriba  -->
+                                                <GradientStop Offset="1" Color="#AA000000" />
+                                                <!--  Negro semi-transparente abajo  -->
+                                            </LinearGradientBrush>
+                                        </Rectangle.Fill>
+                                        <Rectangle.Clip>
+                                            <RectangleGeometry
+                                                RadiusX="8"
+                                                RadiusY="8"
+                                                Rect="0,0,514,80" />
+                                        </Rectangle.Clip>
+                                    </Rectangle>
+
+                                    <!--  Título del video  -->
+                                    <TextBlock
+                                        Margin="16,0,16,0"
+                                        VerticalAlignment="Center"
+                                        FontSize="20"
+                                        FontWeight="Bold"
+                                        Foreground="White"
+                                        Text="{Binding Title}"
+                                        TextWrapping="Wrap" />
+                                </Grid>
+                            </Grid>
+
+                            <!--  Overlay de Busy  -->
                             <StackPanel
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
+                                IsVisible="{Binding IsAnalyzing}"
                                 Orientation="Vertical"
                                 Spacing="15">
                                 <progRing:ProgressRing
@@ -255,9 +274,10 @@
                                     Foreground="White"
                                     Text="Analizando video..." />
                             </StackPanel>
-                        </Border>
 
-                    </Grid>
+
+                        </Grid>
+                    </Border>
                 </Border>
 
                 <!--  Formatos  -->
@@ -265,86 +285,93 @@
                     Grid.Column="1"
                     Margin="28,0,0,0"
                     Padding="10"
-                    BorderBrush="Gray"
+                    BorderBrush="{DynamicResource BorderDefault}"
                     BorderThickness="1"
                     CornerRadius="15">
 
-                    <Grid RowDefinitions="Auto, *, 48">
-                        <TextBlock
-                            Margin="20,10"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            FontSize="16"
-                            FontWeight="Medium"
-                            Text="FORMAT AND QUALITY" />
+                    <Grid>
+                        <!--  Placeholder cuando no hay formatos  -->
+                        <Grid HorizontalAlignment="Center" IsVisible="{Binding !HasFormats}">
+                            <StackPanel
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Spacing="8">
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    FontSize="20"
+                                    FontWeight="Medium"
+                                    Text="Formatos y Calidad" />
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    FontSize="12"
+                                    Foreground="{DynamicResource TextSecondary}"
+                                    Text="No hay formatos disponibles" />
+                            </StackPanel>
+                        </Grid>
 
-                        <!--  ComboBox para seleccionar calidad  -->
-                        <ListBox
-                            Grid.Row="1"
-                            Background="Transparent"
-                            ItemsSource="{Binding Formats}"
-                            SelectedItem="{Binding SelectedFormat, Mode=TwoWay}"
-                            SelectionMode="Single">
+                        <!--  Lista de formatos  -->
+                        <Grid IsVisible="{Binding HasFormats}" RowDefinitions="50, *, 60">
 
-                            <ListBox.Styles>
-                                <Style Selector="ListBoxItem">
-                                    <Setter Property="Height" Value="36" />
-                                    <!--  Ajusta la altura  -->
-                                    <Setter Property="Padding" Value="5,0" />
-                                    <!--  Reduce el padding  -->
-                                </Style>
-                            </ListBox.Styles>
+                            <TextBlock
+                                Margin="20,0,20,12"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Bottom"
+                                FontSize="20"
+                                FontWeight="Medium"
+                                Text="Formatos y Calidad" />
 
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <RadioButton
-                                        VerticalAlignment="Center"
-                                        Content="{Binding Label}"
-                                        GroupName="FormatsGroup"
-                                        IsChecked="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected}" />
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                        <!--<ComboBox
-                        Grid.Row="1"
-                        ItemsSource="{Binding Formats}"
-                        SelectedItem="{Binding SelectedFormat}">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Label}" />
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>-->
+                            <!--  ComboBox para seleccionar calidad  -->
+                            <ListBox
+                                Grid.Row="1"
+                                Background="Transparent"
+                                ItemsSource="{Binding Formats}"
+                                SelectedItem="{Binding SelectedFormat, Mode=TwoWay}"
+                                SelectionMode="Single">
 
-                        <Button
-                            Grid.Row="2"
-                            Width="300"
-                            Height="40"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            HorizontalContentAlignment="Center"
-                            VerticalContentAlignment="Center"
-                            Command="{Binding AddToQueueCommand}"
-                            Content="Añadir a cola" />
+                                <ListBox.Styles>
+                                    <Style Selector="ListBoxItem">
+                                        <Setter Property="Height" Value="38" />
+                                        <!--  Ajusta la altura  -->
+                                        <Setter Property="Padding" Value="5,0" />
+                                        <!--  Reduce el padding  -->
+                                    </Style>
+                                </ListBox.Styles>
+
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <RadioButton
+                                            VerticalAlignment="Center"
+                                            Content="{Binding Label}"
+                                            GroupName="FormatsGroup"
+                                            IsChecked="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected}" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <Button
+                                Grid.Row="2"
+                                Height="40"
+                                MinWidth="240"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                HorizontalContentAlignment="Center"
+                                VerticalContentAlignment="Center"
+                                Classes="Primary"
+                                Command="{Binding AddToQueueCommand}"
+                                Content="Añadir a cola" />
+                        </Grid>
                     </Grid>
-
                 </Border>
             </Grid>
 
             <Border
                 Grid.Row="3"
-                Margin="20"
-                BorderBrush="Gray"
-                BorderThickness="1"
+                Margin="20,0,20,20"
+                Background="#121212"
+                Classes="Card"
                 CornerRadius="15">
 
-                <Grid Margin="20,10" RowDefinitions="48, *, 38">
-                    <!--<Button
-                Width="120"
-                Command="{Binding DownloadCommand}"
-                Content="Descargar" />
-
-            <Button Command="{Binding AddToQueueCommand}" Content="Añadir a cola" />-->
+                <Grid Margin="20,0" RowDefinitions="58, *, 38">
 
                     <TextBlock
                         VerticalAlignment="Center"
@@ -352,36 +379,218 @@
                         FontWeight="Bold"
                         Text="Active Downloads" />
 
-                    <Button
-                        Width="140"
-                        Height="36"
+                    <StackPanel
+                        Grid.Row="0"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center"
-                        HorizontalContentAlignment="Center"
-                        VerticalContentAlignment="Center"
-                        Command="{Binding StartQueueCommand}"
-                        Content="Iniciar cola" />
+                        Orientation="Horizontal"
+                        Spacing="8">
+                        <Button
+                            Width="36"
+                            Height="36"
+                            VerticalAlignment="Center"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            Classes="DownloadItem"
+                            Command="{Binding PauseQueueCommand}">
+                            <PathIcon
+                                Width="16"
+                                Height="16"
+                                Data="M6,3 H10 V21 H6 Z M14,3 H18 V21 H14 Z" />
+                        </Button>
 
-                    <ListBox Grid.Row="1" ItemsSource="{Binding Downloads}">
+                        <Button
+                            Width="36"
+                            Height="36"
+                            VerticalAlignment="Center"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            Classes="DownloadItem"
+                            Command="{Binding ResumeQueueCommand}"
+                            Content="▶">
+                            <PathIcon
+                                Width="16"
+                                Height="16"
+                                Data="M5,3 L19,12 L5,21 Z" />
+                        </Button>
+                        <Button
+                            Width="36"
+                            Height="36"
+                            VerticalAlignment="Center"
+                            Classes="DownloadItem"
+                            Command="{Binding CancelQueueCommand}">
+                            <PathIcon
+                                Width="16"
+                                Height="16"
+                                Data="M7,5 L12,10 L17,5 L19,7 L14,12 L19,17 L17,19 L12,14 L7,19 L5,17 L10,12 L5,7 Z" />
+                        </Button>
+                        <Button
+                            Width="120"
+                            Height="36"
+                            VerticalAlignment="Center"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            Classes="Primary"
+                            Command="{Binding StartQueueCommand}"
+                            Content="Iniciar cola" />
+                    </StackPanel>
+
+                    <!--  Placeholder lista de descargas  -->
+                    <Border
+                        Grid.Row="1"
+                        CornerRadius="10"
+                        IsVisible="{Binding IsDownloadsEmpty}">
+
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <!--  Ícono de carpeta vacía  -->
+                            <Path
+                                Width="48"
+                                Height="48"
+                                Data="M10,4 L14,4 L16,6 L22,6 C23.1,6 24,6.9 24,8 L24,20 C24,21.1 23.1,22 22,22 L2,22 C0.9,22 0,21.1 0,20 L0,6 C0,4.9 0.9,4 2,4 Z"
+                                Fill="Gray"
+                                Stretch="Uniform" />
+
+                            <!--  Texto debajo del ícono  -->
+                            <TextBlock
+                                Margin="0,4,0,0"
+                                HorizontalAlignment="Center"
+                                FontSize="14"
+                                Foreground="Gray"
+                                Text="Sin descargas pendientes" />
+                        </StackPanel>
+                    </Border>
+
+                    <!--  Lista de descarga  -->
+                    <ListBox
+                        Grid.Row="1"
+                        Background="Transparent"
+                        ItemsSource="{Binding Downloads}">
                         <ListBox.ItemTemplate>
-
                             <DataTemplate>
-                                <StackPanel Margin="5" Spacing="4">
+                                <Border
+                                    Margin="0"
+                                    Background="#1A1A1A"
+                                    BorderBrush="#333"
+                                    BorderThickness="1"
+                                    CornerRadius="10">
 
-                                    <TextBlock FontWeight="Bold" Text="{Binding Url}" />
+                                    <Grid Margin="10,8,14,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
 
-                                    <ProgressBar
-                                        Maximum="100"
-                                        Minimum="0"
-                                        Value="{Binding Progress}" />
+                                        <!--  Miniatura  -->
+                                        <Image
+                                            Height="64"
+                                            ClipToBounds="True"
+                                            Source="{Binding Thumbnail}"
+                                            Stretch="UniformToFill">
+                                            <Image.Clip>
+                                                <RectangleGeometry
+                                                    RadiusX="6"
+                                                    RadiusY="6"
+                                                    Rect="0,0,98,64" />
+                                            </Image.Clip>
+                                        </Image>
 
-                                    <TextBlock Text="{Binding Status}" />
+                                        <!--  Información  -->
+                                        <StackPanel Grid.Column="1" Margin="5,0">
+                                            <TextBlock
+                                                Margin="0,4"
+                                                FontWeight="Bold" FontSize="14"
+                                                Foreground="White"
+                                                Text="{Binding Title}"
+                                                TextWrapping="Wrap" />
 
-                                </StackPanel>
-                            </DataTemplate>
+                                            <ProgressBar
+                                                Height="6"
+                                                Margin="0,5,0,5"
+                                                Value="{Binding Progress}" />
 
+
+                                            <StackPanel
+                                                Margin="0,5,0,5"
+                                                Orientation="Horizontal"
+                                                Spacing="6">
+                                                <TextBlock
+                                                    FontSize="13"
+                                                    Foreground="#AAA"
+                                                    Text="{Binding Format}" />
+                                                <TextBlock FontSize="13" Text="{Binding StatusMessage}" />
+                                                <TextBlock
+                                                    FontSize="13"
+                                                    Foreground="#888"
+                                                    IsVisible="{Binding Status, Converter={StaticResource StatusToVisibilityConverter}}"
+                                                    Text="{Binding ProgressMessage}" />
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!--  Botones  -->
+                                        <StackPanel
+                                            Grid.Column="2"
+                                            VerticalAlignment="Center"
+                                            Orientation="Horizontal">
+                                            <Button
+                                                Margin="0,0,5,0"
+                                                Classes="AccentButton"
+                                                Content="Pause" />
+                                            <Button Classes="DangerButton" Content="Cancel" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>						
                         </ListBox.ItemTemplate>
+
+						<ListBox.ItemContainerTheme>
+							<ControlTheme TargetType="ListBoxItem">
+
+								<Setter Property="Background" Value="Transparent"/>
+								<Setter Property="Padding" Value="0"/>
+
+								<Setter Property="Template">
+									<ControlTemplate TargetType="ListBoxItem">
+										<Border
+											x:Name="Bd"
+											CornerRadius="10"
+											Background="{TemplateBinding Background}"
+											BorderThickness="2"
+											BorderBrush="Transparent"
+											Padding="{TemplateBinding Padding}">
+
+											<ContentPresenter
+												Content="{TemplateBinding Content}"
+												ContentTemplate="{TemplateBinding ContentTemplate}"/>
+										</Border>
+									</ControlTemplate>
+								</Setter>
+
+							</ControlTheme>
+						</ListBox.ItemContainerTheme>
+
+						<!--<ListBox.ItemContainerTheme>
+							<ControlTheme TargetType="ListBoxItem">
+
+								<Setter Property="Template">
+									<ControlTemplate TargetType="ListBoxItem">
+										<Border
+											CornerRadius="10"
+											Background="{TemplateBinding Background}"
+											Padding="{TemplateBinding Padding}">
+
+											<ContentPresenter
+												Content="{TemplateBinding Content}"
+												ContentTemplate="{TemplateBinding ContentTemplate}"/>
+										</Border>
+									</ControlTemplate>
+								</Setter>
+
+							</ControlTheme>
+						</ListBox.ItemContainerTheme>-->
+              
                     </ListBox>
+
 
                     <Grid Grid.Row="2">
                         <TextBlock

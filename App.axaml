@@ -2,6 +2,7 @@
     x:Class="WinTube.App"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="clr-namespace:WinTube.Converters"
     RequestedThemeVariant="Default">
     <!--  "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options.  -->
 
@@ -16,6 +17,10 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://WinTube/Styles/Colors.axaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <converters:IsNotNullConverter x:Key="IsNotNullConverter" />
+            <converters:IsNullConverter x:Key="IsNullConverter" />
+			<converters:StatusToVisibilityConverter x:Key="StatusToVisibilityConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 

@@ -2,7 +2,7 @@
     <!--  Add Resources Here  -->
 
     <!--  Colores base  -->
-    <SolidColorBrush x:Key="BackgroundPrimary">#1A1A1A</SolidColorBrush>
+    <SolidColorBrush x:Key="BackgroundPrimary">#171717</SolidColorBrush>
     <SolidColorBrush x:Key="BackgroundBarTitle">#000000</SolidColorBrush>
     <SolidColorBrush x:Key="BackgroundSecondary">#252525</SolidColorBrush>
     <SolidColorBrush x:Key="BackgroundCard">#2D2D2D</SolidColorBrush>
@@ -23,6 +23,6 @@
     <SolidColorBrush x:Key="ProgressValue">#E91E63</SolidColorBrush>
 
       <!--Colores de borde-->  
-    <SolidColorBrush x:Key="BorderDefault">#3D3D3D</SolidColorBrush>
+    <SolidColorBrush x:Key="BorderDefault">#3C3C3C</SolidColorBrush>
     <SolidColorBrush x:Key="BorderLight">#4D4D4D</SolidColorBrush>
 </ResourceDictionary>

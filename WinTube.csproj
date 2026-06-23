@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
   </PropertyGroup>
 
 	
@@ -12,13 +13,21 @@
     <AvaloniaXaml Remove="Styles\Colors.axaml" />
   </ItemGroup>
   <ItemGroup>
+    <None Remove="Assets\video-placeholder.png" />
     <None Remove="Tools\ffmpeg.exe" />
     <None Remove="Tools\yt-dlp.exe" />
   </ItemGroup>
   <ItemGroup>
+    <AvaloniaResource Include="Assets\video-placeholder.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </AvaloniaResource>
     <AvaloniaResource Include="Styles\Colors.axaml" />
   </ItemGroup>
   <ItemGroup>
+    <AvaloniaResource Include="Assets\icon.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </AvaloniaResource>
+    <Content Include="icon.ico" />
     <Content Include="Tools\ffmpeg.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -38,5 +47,9 @@
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Deadpikle.AvaloniaProgressRing" Version="0.11.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Remove="icon.ico" />
   </ItemGroup>
 </Project>
