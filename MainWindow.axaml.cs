@@ -1,7 +1,10 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Media;
+using System;
+using System.Threading.Tasks;
 using WinTube.ViewModels;
 
 namespace WinTube;
@@ -15,6 +18,45 @@ public partial class MainWindow : Window
 
         // Actualizar el texto del botón maximizar según el estado
         UpdateMaximizeButtonText();
+
+        this.Activated += OnWindowActivated;
+    }
+
+    private async void OnWindowActivated(object? sender, EventArgs e)
+    {
+        await CaptureUrlAsync();
+    }
+
+    private async Task CaptureUrlAsync()
+    {
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (clipboard == null) return;
+
+        // Leer el texto actual
+        string? text = await clipboard.TryGetTextAsync();
+
+        if (!string.IsNullOrEmpty(text))
+        {
+            //if (text.StartsWith("http://") || text.StartsWith("https://"))
+            //{
+            //    // Hacer algo con el texto capturado, por ejemplo, asignarlo a una propiedad del ViewModel
+            //    if (DataContext is MainViewModel viewModel)
+            //    {
+            //        viewModel.Url = text;
+            //    }
+            //}
+
+            if (Uri.TryCreate(text, UriKind.Absolute, out Uri? uriResult) &&
+               (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps))
+            {
+                // Hacer algo con el texto capturado, por ejemplo, asignarlo a una propiedad del ViewModel
+                if (DataContext is MainViewModel viewModel)
+                {
+                    viewModel.Url = text;
+
+                }
+            }
+        }
     }
 
     // Método para arrastrar la ventana
