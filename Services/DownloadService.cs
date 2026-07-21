@@ -5,6 +5,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using WinTube.Models;
@@ -14,40 +15,48 @@ namespace WinTube.Services
     public class DownloadService
     {
         public event Action<DownloadProgress>? ProgressChanged;
-        private Process? _currentProcess;
+        private static readonly Regex YtDlpProgressRegex = new Regex(
+            @"\[download\]\s+(?<percent>[\d\.]+)%\s+of\s+~?\s*(?<total>\S+)\s+at\s+(?<speed>\S+)\s+ETA\s+(?<eta>\S+)",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        //private Process? _currentProcess;
 
         // Importaciones nativas de Windows para pausar/reanudar procesos
-        [DllImport("ntdll.dll", SetLastError = true)]
-        private static extern int NtSuspendProcess(IntPtr processHandle);
+        //[DllImport("ntdll.dll", SetLastError = true)]
+        //private static extern int NtSuspendProcess(IntPtr processHandle);
 
-        [DllImport("ntdll.dll", SetLastError = true)]
-        private static extern int NtResumeProcess(IntPtr processHandle);
+        //[DllImport("ntdll.dll", SetLastError = true)]
+        //private static extern int NtResumeProcess(IntPtr processHandle);
 
-        public void Pause()
-        {
-            if (_currentProcess != null && !_currentProcess.HasExited)
-            {
-                NtSuspendProcess(_currentProcess.Handle);
-            }
-        }
+        //public void Pause()
+        //{
+        //    if (_currentProcess != null && !_currentProcess.HasExited)
+        //    {
+        //        NtSuspendProcess(_currentProcess.Handle);
+        //    }
+        //}
 
-        public void Resume()
-        {
-            if (_currentProcess != null && !_currentProcess.HasExited)
-            {
-                NtResumeProcess(_currentProcess.Handle);
-            }
-        }
+        //public void Resume()
+        //{
+        //    if (_currentProcess != null && !_currentProcess.HasExited)
+        //    {
+        //        NtResumeProcess(_currentProcess.Handle);
+        //    }
+        //}
 
-        public async Task DownloadVideo(
+        public async Task RunYtDlpAsync(
             string url,
             FormatItem format,
-            string outputFolder, CancellationToken cancellationToken)
+            string outputFolder,
+            CancellationToken cancellationToken)
         {
+            // forzamos el lanzamiento de la excepción si ya se pidió cancelar antes de empezar
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Ruta completa a yt-dlp.exe y ffmpeg.exe, asumiendo que están en la carpeta "Tools" dentro del directorio base de la aplicación
             string ytDlpPath = Path.Combine(
-                AppContext.BaseDirectory,
-                "Tools",
-                "yt-dlp.exe");
+              AppContext.BaseDirectory,
+              "Tools",
+              "yt-dlp.exe");
 
             string ffmpegPath = Path.Combine(
                 AppContext.BaseDirectory,
@@ -82,7 +91,7 @@ namespace WinTube.Services
             }
             else
             {
-                outputFolder= Path.Combine(outputFolder, "Video");
+                outputFolder = Path.Combine(outputFolder, "Video");
                 // Si en tu FormatItem guardas si ya tiene audio o no (por ejemplo, si ACodec != "none")
                 if (format.HasAudio)
                 {
@@ -105,11 +114,10 @@ namespace WinTube.Services
                         $"-o \"{outputFolder}\\%(title)s.%(ext)s\" " +
                         $"\"{url}\"";
                 }
-            }
+            }          
 
-            _currentProcess = new Process();
-
-            _currentProcess.StartInfo = new ProcessStartInfo
+            using var process = new Process();
+            process.StartInfo = new ProcessStartInfo
             {
                 FileName = ytDlpPath,
                 Arguments = arguments,
@@ -119,51 +127,43 @@ namespace WinTube.Services
                 CreateNoWindow = true
             };
 
-            _currentProcess.OutputDataReceived += OnData;
-            _currentProcess.ErrorDataReceived += OnData;
+            // REGISTRO DE CANCELACIÓN: Si el token se activa, matamos el proceso inmediatamente
+            using var registration = cancellationToken.Register(() => KillProcess(process));
 
-            _currentProcess.Start();
-            _currentProcess.BeginOutputReadLine();
-            _currentProcess.BeginErrorReadLine();
-
-            // Registrar la cancelación para matar el proceso si se solicita
-            using (cancellationToken.Register(() => KillProcess(_currentProcess)))
+            // Leemos la salida en vivo para actualizar la barra de progreso
+            process.Start();
+            string? line;
+            while ((line = await process.StandardOutput.ReadLineAsync(cancellationToken)) != null)
             {
-                try
-                {
-                    // Esperar a que el proceso termine o sea cancelado
-                    await _currentProcess.WaitForExitAsync(cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
+                cancellationToken.ThrowIfCancellationRequested();
 
-                    ProgressChanged?.Invoke(new DownloadProgress { Status = "Cancelado", Percentage = 0 });
-                    throw; // relanzar para que el llamador sepa que fue cancelado
-                }
-                finally
-                {
-                    _currentProcess = null;
+                // Descartar lineas vacias que envia la consola de yt-dlp.exe
+                if (!string.IsNullOrWhiteSpace(line))
+                {                    
+                    ParseAndUpdateProgress(line);
                 }
             }
 
-            // Verificar si la cancelación fue solicitada después de que el proceso terminó
-            cancellationToken.ThrowIfCancellationRequested();
+            // Esperamos asíncronicamente a que el proceso de windows se cierre del todo
+            await process.WaitForExitAsync(cancellationToken);
 
-            // Si terminó normalmente, enviar progreso final
-            ProgressChanged?.Invoke(new DownloadProgress
+            // Si yt-dlp devuelve un código distinto de 0 (y no fue por una cancelación), algo salió mal
+            if (process.ExitCode != 0)
             {
-                Percentage = 100,
-                Status = "Completado"
-            });
+                string errorDetails = await process.StandardError.ReadToEndAsync(cancellationToken);
+                throw new Exception(errorDetails);
+            }        
         }
 
-        private void KillProcess(Process process)
+             private void KillProcess(Process process)
         {
             if (process != null && !process.HasExited)
             {
                 try
                 {
-                    NtResumeProcess(process.Handle); // Asegurarse de que el proceso no esté suspendido
+                    // NtResumeProcess(process.Handle); // Asegurarse de que el proceso no esté suspendido
+
+                    // "entireProcessTree: true" destruye yt-dlp y a ffmpeg si estaba uniendo audio/video
                     process.Kill(entireProcessTree: true); // Matar proceso y sus hijos
                 }
                 catch
@@ -173,111 +173,63 @@ namespace WinTube.Services
             }
         }
 
-        private void OnData(object sender, DataReceivedEventArgs e)
+        //private void OnData(object sender, DataReceivedEventArgs e)
+        //{
+        //    if (string.IsNullOrWhiteSpace(e.Data))
+        //        return;
+
+        //    var line = e.Data;
+
+        //    // yt-dlp progreso típico
+        //    if (line.Contains("[download]"))
+        //    {
+        //        var progress = ParseProgress(line);
+
+        //        ProgressChanged?.Invoke(progress);
+        //    }
+        //}
+
+        private void ParseAndUpdateProgress(string line)
         {
-            if (string.IsNullOrWhiteSpace(e.Data))
-                return;
-
-            var line = e.Data;
-
-            // yt-dlp progreso típico
-            if (line.Contains("[download]"))
+            if(line.Contains("[download]"))
             {
                 var progress = ParseProgress(line);
-
                 ProgressChanged?.Invoke(progress);
             }
         }
-
-        //private DownloadProgress ParseProgress(string line)
-        //{
-        //    var progress = new DownloadProgress();
-
-        //    try
-        //    {
-        //        // porcentaje
-        //        var percentIndex = line.IndexOf('%');
-        //        if (percentIndex > 0)
-        //        {
-        //            var start = line.LastIndexOf(' ', percentIndex) + 1;
-        //            var percentStr = line[start..percentIndex];
-        //            if (double.TryParse(percentStr, out double p))
-        //                progress.Percentage = p;
-        //        }
-
-        //        // tamaño total (ejemplo: "of 1.4GiB")
-        //        var ofTag = "of ";
-        //        var ofIndex = line.IndexOf(ofTag);
-        //        if (ofIndex > 0)
-        //        {
-        //            var end = line.IndexOf(' ', ofIndex + ofTag.Length);
-        //            if (end < 0) end = line.Length;
-        //            progress.TotalSize = line.Substring(ofIndex + ofTag.Length, end - (ofIndex + ofTag.Length));
-        //        }
-
-        //        // velocidad (ejemplo: "at 1.2MiB/s")
-        //        var atTag = "at ";
-        //        var atIndex = line.IndexOf(atTag);
-        //        if (atIndex > 0)
-        //        {
-        //            var end = line.IndexOf(' ', atIndex + atTag.Length);
-        //            if (end < 0) end = line.Length;
-        //            progress.Speed = line.Substring(atIndex + atTag.Length, end - (atIndex + atTag.Length));
-        //        }
-
-        //        // ETA (ejemplo: "ETA 00:15")
-        //        var etaTag = "ETA ";
-        //        var etaIndex = line.IndexOf(etaTag);
-        //        if (etaIndex > 0)
-        //        {
-        //            var end = line.IndexOf(' ', etaIndex + etaTag.Length);
-        //            if (end < 0) end = line.Length;
-        //            progress.Eta = line.Substring(etaIndex + etaTag.Length, end - (etaIndex + etaTag.Length));
-        //        }
-
-        //        progress.Status = "Descargando...";
-        //    }
-        //    catch
-        //    {
-        //        progress.Status = "Procesando...";
-        //    }
-
-        //    return progress;
-        //}
-
-
         private DownloadProgress ParseProgress(string line)
         {
-            var progress = new DownloadProgress();
-
+            
+            var progress = new DownloadProgress { Status = "Descargando..." };
+        
             try
             {
-                // [download]  45.3% of ...
-
-                var percentIndex = line.IndexOf('%');
-
-                if (percentIndex > 0)
+                var match = YtDlpProgressRegex.Match(line);
+                if (match.Success)
                 {
-                    var start = line.LastIndexOf(' ', percentIndex) + 1;
+                    // 1. Extracto de porcentaje (ej. 45.3)
+                    if (double.TryParse(match.Groups["percent"].Value,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out double percent))
+                    {
+                        progress.Percentage = percent;
+                    }
 
-                    var percentStr =
-                        line[start..percentIndex];
+                    // 2. Tamaño total (ej. 123.45MiB)
+                    progress.TotalSize = match.Groups["total"].Value;
 
-                    if (double.TryParse(percentStr, out double p))
-                        progress.Percentage = p;
+                    // Extracto de velocidad (ej. 1.23MiB/s)
+                    progress.Speed = match.Groups["speed"].Value;
+
+                    // Extracto de ETA (ej. 00:02:34)
+                    progress.Eta= match.Groups["eta"].Value;
                 }
-
-                if (line.Contains("at"))
+                else
                 {
-                    progress.Speed = line;
+                    // Rescate por si la línea tiene un formato ligeramente distino
+                    ExtractFallbackPercentage(line, progress);
                 }
-
-                if (line.Contains("ETA"))
-                {
-                    progress.Eta = line;
-                }
-
-                progress.Status = "Descargando...";
+                
             }
             catch
             {
@@ -287,5 +239,20 @@ namespace WinTube.Services
             return progress;
         }
 
+        private void ExtractFallbackPercentage(string line, DownloadProgress progress)
+        {
+            var percentIndex = line.IndexOf("%");
+            if (percentIndex > 0)
+            {
+                var start = line.LastIndexOf(' ', percentIndex) + 1;
+                var percentString = line[start..percentIndex];
+                if (double.TryParse(percentString,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out double p))
+                {
+                    progress.Percentage = p;
+                }
+            }           
+        }
     }
 }

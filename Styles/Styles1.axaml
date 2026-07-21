@@ -103,31 +103,78 @@
         <Setter Property="Background" Value="#FFC107" />
     </Style>
 
-	<Style Selector="Button.CancelButton">
-		<Setter Property="Background" Value="#C62828"/>
-		<Setter Property="Foreground" Value="White"/>
-		<Setter Property="Padding" Value="12,6"/>
-		<Setter Property="CornerRadius" Value="6"/>
-		<Setter Property="FontWeight" Value="Bold"/>
-	</Style>
+    <Style Selector="Button.CancelButton">
+        <Setter Property="Background" Value="#C62828" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
 
-	<Style Selector="Button.CancelButton:pointerover">
-		<Setter Property="Background" Value="#E53935"/>
-	</Style>
+    <Style Selector="Button.CancelButton:pointerover">
+        <Setter Property="Background" Value="#E53935" />
+    </Style>
 
-	<Style Selector="Button.AccentButton">
-		<Setter Property="Background" Value="#0078D7"/>
-		<Setter Property="Foreground" Value="White"/>
-		<Setter Property="CornerRadius" Value="6"/>
-	</Style>
+    <Style Selector="Button.AccentButton">
+        <Setter Property="Background" Value="#0078D7" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
 
-	<Style Selector="Button.DangerButton">
-		<Setter Property="Background" Value="#D83B01"/>
-		<Setter Property="Foreground" Value="White"/>
-		<Setter Property="CornerRadius" Value="6"/>
-	</Style>
+    <Style Selector="Button.DangerButton">
+        <Setter Property="Background" Value="#D83B01" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
 
-	<Style Selector="ListBoxItem:selected /template/ Border#Bd">
-		<Setter Property="BorderBrush" Value="#4CAF50"/>
-	</Style>
+    <Style Selector="Button.TextOnly">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="10,5" />
+		<Setter Property="FontSize" Value="13" />
+        <Setter Property="Cursor" Value="Hand" />
+		<Setter Property="Foreground">
+			<LinearGradientBrush>
+				<GradientStop Offset="0" Color="#949494" />
+				<GradientStop Offset="1" Color="#949494" />
+			</LinearGradientBrush>
+		</Setter>
+        <Setter Property="CornerRadius" Value="6" />
+        <!--  Template completamente limpio  -->
+        <!--<Setter Property="Template">
+            <ControlTemplate>
+                <ContentPresenter
+                    x:Name="PART_ContentPresenter"
+                    Padding="{TemplateBinding Padding}"
+                    HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                    VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    Content="{TemplateBinding Content}"
+                    ContentTemplate="{TemplateBinding ContentTemplate}" />
+            </ControlTemplate>
+        </Setter>-->
+
+        <!--  Forzar todos los estados a Transparent  -->
+        <Style Selector="^:pointerover">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
+        <Style Selector="^:pressed">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
+        <Style Selector="^:focus">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+    </Style>
+
+    <Style Selector="ListBoxItem:selected /template/ Border#Bd">
+        <Setter Property="BorderBrush" Value="#4CAF50" />
+    </Style>
 </Styles>

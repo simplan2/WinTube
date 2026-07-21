@@ -1,16 +1,14 @@
-﻿using Avalonia.Media.Imaging;
+﻿using Avalonia.Controls;
+using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.NetworkInformation;
-using System.Runtime.Serialization;
-using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,19 +22,23 @@ namespace WinTube.ViewModels
     public partial class MainViewModel : ObservableObject
     {
         #region Fields 
-        private readonly DownloadService downloadService = new();
-        private readonly YoutubeService youtubeService = new();
-        private DownloadItem? currentItem;    
+        private readonly DownloadService _downloadService = new();
+        private readonly YoutubeService _youtubeService = new();
+        //private DownloadItem? _currentItem;    
         private readonly object lockObj = new();
         private CancellationTokenSource? _cts;
+        // Para saber si el bucle de la cola ya esa corriendo
+        private bool _isProcessingQueue = false;
         #endregion
 
         #region Properties
         [ObservableProperty]
-        private ObservableCollection<DownloadItem> downloads = new();
+        private ObservableCollection<DownloadItemViewModel> downloads = new();
 
         [ObservableProperty]
         private string url = "";
+
+        public string CurrentNormalizedURL { get; private set; } = string.Empty;
 
         [ObservableProperty]
         private string title = "";
@@ -60,13 +62,14 @@ namespace WinTube.ViewModels
 
         [ObservableProperty] private bool isDownloading;
         [ObservableProperty] private bool isPaused;
-        [ObservableProperty] private string status = "Estado";
+        [ObservableProperty] private string status = "Listo"; // Estado inicial
+
         #endregion
 
         #region Constructors
         public MainViewModel()
         {
-            downloadService.ProgressChanged += OnDownloadProgressChanged;
+            //_downloadService.ProgressChanged += OnDownloadProgressChanged;
             Downloads.CollectionChanged += Downloads_CollectionChanged;
         }
         #endregion
@@ -74,14 +77,18 @@ namespace WinTube.ViewModels
         #region Commands
         [RelayCommand]
         private async Task Analyze()
-        {
-            Url = NormalizeYoutubeUrl(Url);
-
+        { 
             if (string.IsNullOrWhiteSpace(Url))
             {
                 Status = "Ingresa una URL";
                 return;
             }
+
+            // Actualizamos en la vista
+            Url = NormalizeYoutubeUrl(Url);
+
+            // Almacenamos la Url normalizada por si modifican en la vista
+            CurrentNormalizedURL = Url;
 
             // Limpiar valores anteriores
             ClearInfo();
@@ -91,7 +98,7 @@ namespace WinTube.ViewModels
             {
                 Status = "Analizando video...";
 
-                var json = await youtubeService.GetVideoJson(Url);
+                var json = await _youtubeService.GetVideoJson(Url);
 
                 var info = JsonSerializer.Deserialize<VideoInfo>(json);
 
@@ -228,7 +235,7 @@ namespace WinTube.ViewModels
             }
             catch (Exception ex)
             {
-                Status = $"Error: {ex.Message}";
+                Status = $"{ex.Message}";
                 HasFormats = false;
             }
             finally
@@ -247,13 +254,13 @@ namespace WinTube.ViewModels
             HasFormats = false;
         }
 
+        // Command para agregar un video a la lista e iniciar el procesamiento
         [RelayCommand]
         private void AddToQueue()
-        {
-            if (string.IsNullOrWhiteSpace(Url))
-                return;
-            if (SelectedFormat == null) return;
+        {           
+            if (!HasFormats || SelectedFormat == null) return;
 
+            // Construir info según si se selecciono audio o video
             var formatInfo = string.Empty;
             if (SelectedFormat.IsAudio)
             {
@@ -264,142 +271,216 @@ namespace WinTube.ViewModels
                 formatInfo = $"{SelectedFormat.Height}p {SelectedFormat.Extension.ToUpper()}";
             }
 
-
-            Downloads.Add(new DownloadItem
+            // Add a la lista
+            var newItem = new DownloadItemViewModel
             {
-                Url = Url,
+                Url = CurrentNormalizedURL,
                 Title = Title,
                 Progress = 0,
                 Format = formatInfo,
                 Thumbnail = Thumbnail,
                 Status = DownloadStatus.InQueue,
                 SelectedFormat = SelectedFormat
-            });
+            };
 
-            Url = "";
+            // Le decimos qué hacer cuando ejecute su Removecommand
+            newItem.OnRemoveRequested = (item) => Downloads.Remove(item);
+
+            Downloads.Add(newItem);
+
+            // Intentamos iniciar la colo (si ya esta corriendo, no hace nada)
+            _ = ProccessQueueAsync();           
         }
 
-        [RelayCommand]
-        private async Task StartQueue()
+        /// <summary>
+        /// El buble que procesa los items de la lista uno por uno
+        /// </summary>
+        /// <returns></returns>
+        private async Task ProccessQueueAsync()
         {
-            if (IsDownloading)
-                return;
+            if (_isProcessingQueue == true) return;
 
-            IsDownloading = true;
-            IsPaused = false;
-            _cts = new CancellationTokenSource();
-
-            // Crear carpeta de salida en el escritorio
-            string output = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                "YoutubeDownloads");
-
+            _isProcessingQueue = true;
             try
             {
-                Directory.CreateDirectory(output);
-
-                foreach (var item in Downloads)
+                // Mienras exista items con estatus "InQueue"
+                while (Downloads.Any(d => d.Status == DownloadStatus.InQueue))
                 {
-                    if (item.Progress >= 100 || item.Status == DownloadStatus.Completed)
-                        continue;
+                    var nextDownload = Downloads.First(d => d.Status == DownloadStatus.InQueue);
 
-                    currentItem = item;
-                    currentItem.Status = DownloadStatus.Downloading;
-                    //item.Progress = 0;
-
-                    if (item.SelectedFormat == null)
-                    {                 
-                        continue;
-                    }
-
-                    // Descargar el video usando el servicio
-                    await downloadService.DownloadVideo(
-                        item.Url,
-                        item.SelectedFormat,
-                        output,
-                        _cts.Token);
-
-          
-                    Status = "Descarga terminada...";
-                    currentItem.Status = DownloadStatus.Completed;
+                    // Ejecutamos y es speramos a que complete, falle o se cancele
+                    await nextDownload.StartDownloadAsync();                    
                 }
             }
-            catch (OperationCanceledException)
+            catch (Exception)
             {
-                Status = "Descarga cancelada";
-                if (currentItem != null && currentItem.Progress < 100)
-                {
-                    currentItem.Status = DownloadStatus.Canceled;
-                }
-            }
-            catch (Exception ex)
-            {
-                Status = $"ERROR: {ex.Message}";
-                if (currentItem != null) currentItem.Status = DownloadStatus.Failed;
+                // Manejo global del errores del bucle
+                Debug.WriteLine("Error en el bucle de descarga");
             }
             finally
             {
-                currentItem = null;
-                IsDownloading = false;
-                IsPaused = false;
-                _cts.Dispose();
-                _cts = null;
+                _isProcessingQueue = false;
             }
-
         }
 
+        //[RelayCommand] // Inicia la cola de descarga
+        //private async Task StartQueue()
+        //{
+        //    if (IsDownloading)
+        //        return;
+
+        //    IsDownloading = true;
+        //    IsPaused = false;
+        //    _cts = new CancellationTokenSource();
+
+        //    try
+        //    {               
+
+        //        foreach (var item in Downloads)
+        //        {
+        //            if (item.Progress >= 100 || item.Status == DownloadStatus.Completed)
+        //                continue;
+
+        //            _currentItem = item;
+        //            _currentItem.Status = DownloadStatus.Downloading;
+        //            //item.Progress = 0;
+
+        //            if (item.SelectedFormat == null)
+        //            {                 
+        //                continue;
+        //            }
+
+        //            // Descargar el video usando el servicio
+        //            //await _downloadService.RunYtDlpAsync(
+        //            //    item.Url,
+        //            //    item.SelectedFormat,
+        //            //    _outputFolder,
+        //            //    _cts.Token);
+
+          
+        //            Status = "Descarga terminada...";
+        //            _currentItem.Status = DownloadStatus.Completed;
+        //        }
+        //    }
+        //    catch (OperationCanceledException)
+        //    {
+        //        Status = "Descarga cancelada";
+        //        if (_currentItem != null && _currentItem.Progress < 100)
+        //        {
+        //            _currentItem.Status = DownloadStatus.Canceled;
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Status = $"ERROR: {ex.Message}";
+        //        if (_currentItem != null) _currentItem.Status = DownloadStatus.Failed;
+        //    }
+        //    finally
+        //    {
+        //        _currentItem = null;
+        //        IsDownloading = false;
+        //        IsPaused = false;
+        //        _cts.Dispose();
+        //        _cts = null;
+        //    }
+        //}
+
+        //[RelayCommand]
+        //private void PauseQueue()
+        //{
+        //    if (!IsDownloading || IsPaused)
+        //        return;
+
+        //    _downloadService.Pause();
+        //    IsPaused = true;
+        //    if (_currentItem != null)
+        //    {
+        //        _currentItem.Status = DownloadStatus.Paused;
+        //    }
+
+        //    Status = "Descarga pausada";
+        //}
+
+        //[RelayCommand]
+        //private void ResumeQueue()
+        //{
+        //    if (!IsDownloading || !IsPaused)
+        //        return;
+
+        //    _downloadService.Resume();
+        //    IsPaused = false;
+        //    if (_currentItem != null)
+        //    {
+        //        _currentItem.Status = DownloadStatus.Downloading;
+        //    }
+        //    Status = "Descarga reanudada";
+        //}
+
+        //[RelayCommand]
+        //private void CancelQueue()
+        //{           
+        //    _cts?.Cancel();
+        //}
+
         [RelayCommand]
-        private void PauseQueue()
+        private void ExploreOutputFolder()
         {
-            if (!IsDownloading || IsPaused)
-                return;
+            var pathFolder = PathHelper.GetDefaultOutputFolder();
+            if (string.IsNullOrEmpty(pathFolder)) return;
 
-            downloadService.Pause();
-            IsPaused = true;
-            if (currentItem != null)
+            try
             {
-                currentItem.Status = DownloadStatus.Paused;
+                // Método simple que funciona en todas las plataformas
+                if (OperatingSystem.IsWindows())
+                {
+                    Process.Start("explorer.exe", $"\"{pathFolder}\"");
+                }
+                else if (OperatingSystem.IsMacOS())
+                {
+                    Process.Start("open", $"\"{pathFolder}\"");
+                }
+                else if (OperatingSystem.IsLinux())
+                {
+                    Process.Start("xdg-open", $"\"{pathFolder}\"");
+                }
+                //if (!Directory.Exists(pathFolder))
+                //{
+                //    Directory.CreateDirectory(pathFolder);
+                //}
+                //Process.Start(new ProcessStartInfo
+                //{
+                //    FileName = pathFolder,
+                //    UseShellExecute = true,
+                //    Verb = "open"
+                //});
             }
-
-            Status = "Descarga pausada";
-        }
-
-        [RelayCommand]
-        private void ResumeQueue()
-        {
-            if (!IsDownloading || !IsPaused)
-                return;
-
-            downloadService.Resume();
-            IsPaused = false;
-            if (currentItem != null)
+            catch (Exception ex)
             {
-                currentItem.Status = DownloadStatus.Downloading;
+                Status = $"Error al abrir la carpeta: {ex.Message}";
             }
-            Status = "Descarga reanudada";
-        }
-
-        [RelayCommand]
-        private void CancelQueue()
-        {           
-            _cts?.Cancel();
         }
         #endregion
 
         #region Methods
-        private void OnDownloadProgressChanged(DownloadProgress progress)
+        private async Task StartDownloadAsync()
         {
-            lock (lockObj)
-            {
-                if (currentItem == null)
-                    return;
-
-                currentItem.Progress = progress.Percentage;
-                currentItem.ProgressMessage = IsPaused
-                    ? "Pausado"
-                    : $"{progress.Speed} | ETA {progress.Eta}";
-            }
+            throw new NotImplementedException();
         }
+
+
+        //private void OnDownloadProgressChanged(DownloadProgress progress)
+        //{
+        //    lock (lockObj)
+        //    {
+        //        if (_currentItem == null)
+        //            return;
+
+        //        _currentItem.Progress = progress.Percentage;
+        //        _currentItem.ProgressMessage = IsPaused
+        //            ? "Pausado"
+        //            : $"{progress.Speed} | ETA {progress.Eta}";
+        //    }
+        //}
 
         private string GetQualityLabel(int height)
         {
@@ -473,9 +554,15 @@ namespace WinTube.ViewModels
         }
 
         private void Downloads_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-        {            
+        {   
             base.OnPropertyChanged(nameof(IsDownloadsEmpty));
         }
         #endregion
+
+        public void Dispose()
+        {
+            //_downloadService.ProgressChanged -= OnDownloadProgressChanged;
+            Downloads.CollectionChanged -= Downloads_CollectionChanged;
+        }
     }
 }

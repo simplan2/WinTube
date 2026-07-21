@@ -9,8 +9,8 @@
     Title="WinTube"
     Width="1080"
     Height="740"
-    d:DesignHeight="480"
-    d:DesignWidth="900"
+    d:DesignHeight="500"
+    d:DesignWidth="920"
     x:DataType="vm:MainViewModel"
     Background="Transparent"
     CanResize="True"
@@ -20,7 +20,6 @@
     SystemDecorations="None"
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d">
-
 
     <!--  Layout principal con borde redondeado y sombra  -->
     <Border
@@ -262,7 +261,7 @@
                                 VerticalAlignment="Center"
                                 IsVisible="{Binding IsAnalyzing}"
                                 Orientation="Vertical"
-                                Spacing="15">
+                                Spacing="20">
                                 <progRing:ProgressRing
                                     Width="60"
                                     Height="60"
@@ -283,7 +282,7 @@
                 <!--  Formatos  -->
                 <Border
                     Grid.Column="1"
-                    Margin="28,0,0,0"
+                    Margin="36,0,0,0"
                     Padding="10"
                     BorderBrush="{DynamicResource BorderDefault}"
                     BorderThickness="1"
@@ -371,7 +370,7 @@
                 Classes="Card"
                 CornerRadius="15">
 
-                <Grid Margin="20,0" RowDefinitions="58, *, 38">
+                <Grid Margin="20,0" RowDefinitions="50, *, 38">
 
                     <TextBlock
                         VerticalAlignment="Center"
@@ -379,13 +378,13 @@
                         FontWeight="Bold"
                         Text="Active Downloads" />
 
-                    <StackPanel
+                    <!--<StackPanel
                         Grid.Row="0"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center"
                         Orientation="Horizontal"
-                        Spacing="8">
-                        <Button
+                        Spacing="8">-->
+                    <!--<Button
                             Width="36"
                             Height="36"
                             VerticalAlignment="Center"
@@ -423,8 +422,8 @@
                                 Width="16"
                                 Height="16"
                                 Data="M7,5 L12,10 L17,5 L19,7 L14,12 L19,17 L17,19 L12,14 L7,19 L5,17 L10,12 L5,7 Z" />
-                        </Button>
-                        <Button
+                        </Button>-->
+                    <!--<Button
                             Width="120"
                             Height="36"
                             VerticalAlignment="Center"
@@ -433,7 +432,7 @@
                             Classes="Primary"
                             Command="{Binding StartQueueCommand}"
                             Content="Iniciar cola" />
-                    </StackPanel>
+                    </StackPanel>-->
 
                     <!--  Placeholder lista de descargas  -->
                     <Border
@@ -443,16 +442,23 @@
 
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                             <!--  Ícono de carpeta vacía  -->
+                            <!--<Path
+							   Width="48"
+							   Height="48"
+							   Data="M10,4 L14,4 L16,6 L22,6 C23.1,6 24,6.9 24,8 L24,20 C24,21.1 23.1,22 22,22 L2,22 C0.9,22 0,21.1 0,20 L0,6 C0,4.9 0.9,4 2,4 Z"
+							   Fill="Gray"
+							   Stretch="Uniform" />-->
+
                             <Path
                                 Width="48"
                                 Height="48"
-                                Data="M10,4 L14,4 L16,6 L22,6 C23.1,6 24,6.9 24,8 L24,20 C24,21.1 23.1,22 22,22 L2,22 C0.9,22 0,21.1 0,20 L0,6 C0,4.9 0.9,4 2,4 Z"
+                                Data="M16.22,32.06l3.88,3.8c2.15,2.1,5.63,2.1,7.78,0l3.89-3.8h8.72c3.03,0,5.5,2.41,5.5,5.37v2.69c0,2.96-2.47,5.37-5.5,5.37H7.5c-3.03,0-5.5-2.41-5.5-5.37v-2.69c0-2.96,2.47-5.37,5.5-5.37h8.72ZM26.75,25.57l6.3-6.16c1.07-1.05,2.82-1.05,3.89,0s1.07,2.75,0,3.8l-11,10.75c-1.07,1.05-2.82,1.05-3.89,0l-11-10.75c-1.07-1.05-1.07-2.75,0-3.8s2.82-1.05,3.89,0l6.31,6.16V5.19c0-1.49,1.23-2.69,2.75-2.69s2.75,1.2,2.75,2.69v20.38ZM37.06,38.78c0,1.11.92,2.02,2.06,2.02s2.06-.9,2.06-2.02-.92-2.02-2.06-2.02-2.06.9-2.06,2.02Z"
                                 Fill="Gray"
                                 Stretch="Uniform" />
 
                             <!--  Texto debajo del ícono  -->
                             <TextBlock
-                                Margin="0,4,0,0"
+                                Margin="0,12,0,0"
                                 HorizontalAlignment="Center"
                                 FontSize="14"
                                 Foreground="Gray"
@@ -474,14 +480,9 @@
                                     BorderThickness="1"
                                     CornerRadius="10">
 
-                                    <Grid Margin="10,8,14,8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
+                                    <Grid Margin="10,8,10,8" Grid.ColumnDefinitions="Auto,*,10,Auto">
 
-                                        <!--  Miniatura  -->
+                                        <!--  1. Miniatura  -->
                                         <Image
                                             Height="64"
                                             ClipToBounds="True"
@@ -495,81 +496,134 @@
                                             </Image.Clip>
                                         </Image>
 
-                                        <!--  Información  -->
-                                        <StackPanel Grid.Column="1" Margin="5,0">
+                                        <!--  2. Información  -->
+                                        <Grid
+                                            Grid.Column="1"
+                                            VerticalAlignment="Center"
+                                            RowDefinitions="*,*,*">
+                                            <!--  Title  -->
                                             <TextBlock
                                                 Margin="0,4"
-                                                FontWeight="Bold" FontSize="14"
+                                                VerticalAlignment="Center"
+                                                FontSize="14"
+                                                FontWeight="Bold"
                                                 Foreground="White"
                                                 Text="{Binding Title}"
+                                                TextTrimming="CharacterEllipsis"
                                                 TextWrapping="Wrap" />
 
+                                            <!--  Progress Bar  -->
                                             <ProgressBar
+                                                Grid.Row="1"
                                                 Height="6"
                                                 Margin="0,5,0,5"
                                                 Value="{Binding Progress}" />
 
+                                            <Grid
+                                                Grid.Row="2"
+                                                VerticalAlignment="Center"
+                                                ColumnDefinitions="Auto,8,Auto,8,*">
 
-                                            <StackPanel
-                                                Margin="0,5,0,5"
-                                                Orientation="Horizontal"
-                                                Spacing="6">
+                                                <!--  Formato Media  -->
                                                 <TextBlock
+                                                    Grid.Column="0"
                                                     FontSize="13"
                                                     Foreground="#AAA"
                                                     Text="{Binding Format}" />
-                                                <TextBlock FontSize="13" Text="{Binding StatusMessage}" />
+                                                <!--  Status  -->
                                                 <TextBlock
+                                                    Grid.Column="2"
+                                                    FontSize="13"
+                                                    Text="{Binding StatusMessage}" />
+
+                                                <!--  Info progress  -->
+                                                <TextBlock
+                                                    Grid.Column="4"
                                                     FontSize="13"
                                                     Foreground="#888"
                                                     IsVisible="{Binding Status, Converter={StaticResource StatusToVisibilityConverter}}"
-                                                    Text="{Binding ProgressMessage}" />
-                                            </StackPanel>
-                                        </StackPanel>
+                                                    Text="{Binding ProgressMessage}"
+                                                    TextTrimming="CharacterEllipsis"
+                                                    TextWrapping="Wrap" />
+                                            </Grid>
+                                        </Grid>
 
-                                        <!--  Botones  -->
+
+                                        <!--<Grid
+                                            Grid.Column="3"
+                                            VerticalAlignment="Center"
+                                            RowDefinitions="*,*">
+
+                                        -->
+                                        <!--  Progress Bar  -->
+                                        <!--
+                                            <ProgressBar
+                                                Grid.Row="0"
+                                                Height="6"
+                                                Margin="0,5,0,5"
+                                                Value="{Binding Progress}" />
+                                        -->
+                                        <!--  Info progress  -->
+                                        <!--
+                                            <TextBlock
+                                                Grid.Row="1"
+                                                FontSize="13"
+                                                Foreground="#888"
+                                                IsVisible="{Binding Status, Converter={StaticResource StatusToVisibilityConverter}}"
+                                                Text="{Binding ProgressMessage}"
+                                                TextTrimming="CharacterEllipsis"
+                                                TextWrapping="Wrap" />
+                                        </Grid>-->
+
+                                        <!--  3. Botones  -->
                                         <StackPanel
-                                            Grid.Column="2"
+                                            Grid.Column="5"
                                             VerticalAlignment="Center"
                                             Orientation="Horizontal">
+
                                             <Button
                                                 Margin="0,0,5,0"
                                                 Classes="AccentButton"
-                                                Content="Pause" />
-                                            <Button Classes="DangerButton" Content="Cancel" />
+                                                Command="{Binding RemoveCommand}"
+                                                Content="🗑"
+                                                ToolTip.Tip="Quitar de la lista" />
+
+                                            <Button
+                                                Classes="DangerButton"
+                                                Command="{Binding CancelCommand}"
+                                                Content="Cancelar" />
                                         </StackPanel>
                                     </Grid>
                                 </Border>
-                            </DataTemplate>						
+                            </DataTemplate>
                         </ListBox.ItemTemplate>
 
-						<ListBox.ItemContainerTheme>
-							<ControlTheme TargetType="ListBoxItem">
+                        <ListBox.ItemContainerTheme>
+                            <ControlTheme TargetType="ListBoxItem">
 
-								<Setter Property="Background" Value="Transparent"/>
-								<Setter Property="Padding" Value="0"/>
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0,5" />
 
-								<Setter Property="Template">
-									<ControlTemplate TargetType="ListBoxItem">
-										<Border
-											x:Name="Bd"
-											CornerRadius="10"
-											Background="{TemplateBinding Background}"
-											BorderThickness="2"
-											BorderBrush="Transparent"
-											Padding="{TemplateBinding Padding}">
+                                <Setter Property="Template">
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border
+                                            x:Name="Bd"
+                                            Padding="{TemplateBinding Padding}"
+                                            Background="{TemplateBinding Background}"
+                                            BorderBrush="Transparent"
+                                            BorderThickness="2"
+                                            CornerRadius="10">
 
-											<ContentPresenter
-												Content="{TemplateBinding Content}"
-												ContentTemplate="{TemplateBinding ContentTemplate}"/>
-										</Border>
-									</ControlTemplate>
-								</Setter>
+                                            <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" />
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter>
 
-							</ControlTheme>
-						</ListBox.ItemContainerTheme>
+                            </ControlTheme>
+                        </ListBox.ItemContainerTheme>
 
-						<!--<ListBox.ItemContainerTheme>
+                        <!--<ListBox.ItemContainerTheme>
 							<ControlTheme TargetType="ListBoxItem">
 
 								<Setter Property="Template">
@@ -588,15 +642,48 @@
 
 							</ControlTheme>
 						</ListBox.ItemContainerTheme>-->
-              
+
                     </ListBox>
 
+                    <!--  Status information global  -->
+                    <Grid Grid.Row="2" ColumnDefinitions="*,10, Auto">
+                        <Grid VerticalAlignment="Center" ColumnDefinitions="Auto,*">
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="12"
+                                Foreground="{DynamicResource TextSecondary}"
+                                Text="Estado:" />
+                            <TextBlock
+                                Grid.Column="1"
+                                Margin="4,0"
+                                VerticalAlignment="Center"
+                                FontSize="12"
+                                Foreground="{DynamicResource TextTertiary}"
+                                Text="{Binding Status}"
+                                TextTrimming="CharacterEllipsis"
+                                TextWrapping="Wrap" />
+                        </Grid>
 
-                    <Grid Grid.Row="2">
-                        <TextBlock
-                            VerticalAlignment="Center"
-                            FontSize="14"
-                            Text="{Binding Status}" />
+                        <!--  Botón Explorar carpeta de salida  -->
+                        <Grid Grid.Column="2">
+                            <Button Classes="TextOnly" Command="{Binding ExploreOutputFolderCommand}">
+                                <Button.ContentTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock VerticalAlignment="Center" Text="Explorar" />
+                                            <Path
+                                                Width="16"
+                                                Height="16"
+                                                Margin="6,0,0,0"
+                                                VerticalAlignment="Center"
+                                                Data="M40,43H8c-3.31,0-6-2.69-6-6V11c0-3.31,2.69-6,6-6h7.86c2.02,0,3.9,1.01,5.01,2.7l1.61,2.38c.39.59,1.03.93,1.7.92h15.82c3.31,0,6,2.69,6,6v20c0,3.31-2.69,6-6,6ZM8,9c-1.1,0-2,.9-2,2v26c0,1.1.9,2,2,2h32c1.1,0,2-.9,2-2v-20c0-1.1-.9-2-2-2h-15.8c-2.05.01-3.92-.99-5.05-2.7l-1.61-2.38c-.38-.58-1.01-.92-1.68-.92h-7.86Z"
+                                                Fill="Gray"
+                                                Stretch="Uniform" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </Button.ContentTemplate>
+                            </Button>
+                        </Grid>
                     </Grid>
                 </Grid>
             </Border>
