@@ -18,31 +18,7 @@ namespace WinTube.Services
         private static readonly Regex YtDlpProgressRegex = new Regex(
             @"\[download\]\s+(?<percent>[\d\.]+)%\s+of\s+~?\s*(?<total>\S+)\s+at\s+(?<speed>\S+)\s+ETA\s+(?<eta>\S+)",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        //private Process? _currentProcess;
-
-        // Importaciones nativas de Windows para pausar/reanudar procesos
-        //[DllImport("ntdll.dll", SetLastError = true)]
-        //private static extern int NtSuspendProcess(IntPtr processHandle);
-
-        //[DllImport("ntdll.dll", SetLastError = true)]
-        //private static extern int NtResumeProcess(IntPtr processHandle);
-
-        //public void Pause()
-        //{
-        //    if (_currentProcess != null && !_currentProcess.HasExited)
-        //    {
-        //        NtSuspendProcess(_currentProcess.Handle);
-        //    }
-        //}
-
-        //public void Resume()
-        //{
-        //    if (_currentProcess != null && !_currentProcess.HasExited)
-        //    {
-        //        NtResumeProcess(_currentProcess.Handle);
-        //    }
-        //}
-
+    
         public async Task RunYtDlpAsync(
             string url,
             FormatItem format,
@@ -173,21 +149,6 @@ namespace WinTube.Services
             }
         }
 
-        //private void OnData(object sender, DataReceivedEventArgs e)
-        //{
-        //    if (string.IsNullOrWhiteSpace(e.Data))
-        //        return;
-
-        //    var line = e.Data;
-
-        //    // yt-dlp progreso típico
-        //    if (line.Contains("[download]"))
-        //    {
-        //        var progress = ParseProgress(line);
-
-        //        ProgressChanged?.Invoke(progress);
-        //    }
-        //}
 
         private void ParseAndUpdateProgress(string line)
         {
