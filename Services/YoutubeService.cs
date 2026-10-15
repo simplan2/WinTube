@@ -1,15 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace WinTube.Services
 {
     public class YoutubeService
     {
-        public async Task<string> GetVideoJson(string url)
+        public async Task<string> GetVideoJson(string url, bool includePlaylist = false, bool flatPlaylist = true, CancellationToken cancellationToken = default)
         {
             string ytDlpPath = Path.Combine(
                 AppContext.BaseDirectory,
@@ -21,22 +20,49 @@ namespace WinTube.Services
             process.StartInfo = new ProcessStartInfo
             {
                 FileName = ytDlpPath,
-                Arguments = $"-J \"{url}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
 
+            // ArgumentList evita problemas de quoting e inyeccion de argumentos.
+            process.StartInfo.ArgumentList.Add("-J");
+            if (includePlaylist)
+            {
+                process.StartInfo.ArgumentList.Add("--yes-playlist");
+                if (flatPlaylist)
+                {
+                    process.StartInfo.ArgumentList.Add("--flat-playlist");
+                }
+            }
+            else
+            {
+                process.StartInfo.ArgumentList.Add("--no-playlist");
+            }
+            process.StartInfo.ArgumentList.Add(url);
+
+            using var registration = cancellationToken.Register(() =>
+            {
+                try
+                {
+                    if (!process.HasExited)
+                    {
+                        process.Kill(entireProcessTree: true);
+                    }
+                }
+                catch
+                {
+                    // Ignorar errores al matar el proceso
+                }
+            });
+
             process.Start();
 
-            Task<string> outputTask =
-                process.StandardOutput.ReadToEndAsync();
+            Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
+            Task<string> errorTask = process.StandardError.ReadToEndAsync();
 
-            Task<string> errorTask =
-                process.StandardError.ReadToEndAsync();
-
-            await process.WaitForExitAsync();
+            await process.WaitForExitAsync(cancellationToken);
 
             string output = await outputTask;
             string error = await errorTask;
@@ -48,39 +74,5 @@ namespace WinTube.Services
 
             return output;
         }
-
-        //public async Task<string> GetVideoJson(string url)
-        //{
-        //    string ytDlpPath =
-        //        Path.Combine(
-        //            AppContext.BaseDirectory,
-        //            "Tools",
-        //            "yt-dlp.exe");
-
-        //    Process process = new();
-
-        //    process.StartInfo = new ProcessStartInfo
-        //    {
-        //        FileName = ytDlpPath,
-        //        Arguments = $"-J {url}",
-        //        RedirectStandardOutput = true,
-        //        RedirectStandardError = true,
-        //        UseShellExecute = false,
-        //        CreateNoWindow = true
-        //    };
-
-        //    process.Start();           
-        //    string output = await process.StandardOutput.ReadToEndAsync();
-        //    string error = await process.StandardError.ReadToEndAsync();
-
-        //    await process.WaitForExitAsync();
-
-        //     if(process.ExitCode != 0)
-        //    {
-        //        throw new Exception($"yt-dlp failed with exit code {process.ExitCode}: {error}");
-        //    }
-
-        //     return output;        
-        //}
     }
 }

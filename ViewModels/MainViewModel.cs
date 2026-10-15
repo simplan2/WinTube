@@ -1,13 +1,12 @@
-﻿using Avalonia.Controls;
-using Avalonia.Media.Imaging;
+﻿using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -22,13 +21,48 @@ namespace WinTube.ViewModels
     public partial class MainViewModel : ObservableObject
     {
         #region Fields 
-        private readonly DownloadService _downloadService = new();
         private readonly YoutubeService _youtubeService = new();
-        //private DownloadItem? _currentItem;    
-        private readonly object lockObj = new();
-        private CancellationTokenSource? _cts;
-        // Para saber si el bucle de la cola ya esa corriendo
+        private readonly SettingsService _settingsService = new();
+        private readonly QueueService _queueService = new();
+
+        // Bytes de la ultima miniatura analizada: cada item de la cola recibe su propia copia.
+        private byte[]? _thumbnailBytes;
+
+        // URL de la ultima miniatura analizada, para persistirla por item.
+        private string _thumbnailUrl = "";
+
+        // Para saber si el bucle de la cola ya esta corriendo
         private bool _isProcessingQueue = false;
+
+        // Evita persistir la cola mientras se restaura al arrancar.
+        private bool _isRestoringQueue = false;
+
+        // Debounce de la persistencia: agrupa rafagas de cambios en un solo guardado.
+        private DispatcherTimer? _saveDebounceTimer;
+        private bool _saveInProgress;
+        private bool _savePending;
+
+        // Limita cuantas miniaturas se descargan a la vez (evita rafagas de N HTTP).
+        private readonly SemaphoreSlim _thumbnailSemaphore = new(4);
+
+        // Evita recursion entre "Seleccionar todo" y la seleccion individual.
+        private bool _syncingPlaylistSelection;
+        #endregion
+
+        #region Interaccion con la vista
+        // La vista asigna este delegado para abrir el selector de carpetas.
+        public Func<Task<string?>>? FolderPicker { get; set; }
+
+        // La vista se suscribe para mostrar el modal de error.
+        public event Action<string>? ErrorRequested;
+
+        // La vista se suscribe para abrir el dialogo de ajustes.
+        public event Action? SettingsRequested;
+
+        private void ShowError(string message) => ErrorRequested?.Invoke(message);
+
+        [RelayCommand]
+        private void OpenSettings() => SettingsRequested?.Invoke();
         #endregion
 
         #region Properties
@@ -64,13 +98,91 @@ namespace WinTube.ViewModels
         [ObservableProperty] private bool isPaused;
         [ObservableProperty] private string status = "Listo"; // Estado inicial
 
+        // Si esta activo, los items se eliminan solos al completarse.
+        [ObservableProperty] private bool autoRemoveCompleted;
+
+        // Carpeta de descarga configurada por el usuario (persistida en disco).
+        [ObservableProperty] private string outputFolder = "";
+
+        // Estado de deteccion de playlist (flujo de seleccion y añadido a la cola).
+        [ObservableProperty] private bool isPlaylistDetected;
+        [ObservableProperty] private string playlistTitle = "";
+        [ObservableProperty] private int playlistCount;
+        [ObservableProperty] private ObservableCollection<PlaylistEntryViewModel> playlistEntries = new();
+        [ObservableProperty] private FormatItem? selectedPlaylistFormat;
+        [ObservableProperty] private int selectedPlaylistCount;
+        [ObservableProperty] private bool allPlaylistSelected;
+
+        // Presets de formato global para playlists (no dependen de un video concreto).
+        public ObservableCollection<FormatItem> PlaylistFormats { get; } = new();
+
         #endregion
 
         #region Constructors
         public MainViewModel()
         {
-            //_downloadService.ProgressChanged += OnDownloadProgressChanged;
+            // Cargamos la configuracion de usuario (carpeta de descarga y preferencias).
+            var settings = _settingsService.Load();
+            OutputFolder = settings.OutputFolder;
+            AutoRemoveCompleted = settings.AutoRemoveCompleted;
+
             Downloads.CollectionChanged += Downloads_CollectionChanged;
+
+            // Timer de debounce para agrupar los guardados de la cola.
+            _saveDebounceTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(500)
+            };
+            _saveDebounceTimer.Tick += (_, _) => FlushSaveQueue();
+
+            BuildPlaylistPresets();
+
+            // Restauramos la cola pendiente de sesiones anteriores (reanudacion).
+            RestoreQueue();
+        }
+
+        // Presets genericos de calidad que funcionan para cualquier video de la playlist.
+        private void BuildPlaylistPresets()
+        {
+            PlaylistFormats.Add(new FormatItem
+            {
+                Label = "🎬 Mejor calidad",
+                IsAudio = false,
+                Extension = "mp4",
+                IsGenericSelector = true,
+                FormatId = "bestvideo+bestaudio/best"
+            });
+
+            foreach (int h in new[] { 1080, 720, 480, 360 })
+            {
+                PlaylistFormats.Add(new FormatItem
+                {
+                    Label = $"🎬 {h}p",
+                    IsAudio = false,
+                    Height = h,
+                    Extension = "mp4",
+                    IsGenericSelector = true,
+                    FormatId = $"bestvideo[height<={h}]+bestaudio/best[height<={h}]"
+                });
+            }
+
+            PlaylistFormats.Add(new FormatItem
+            {
+                Label = "🎵 Audio MP3",
+                IsAudio = true,
+                AudioOutputFormat = "mp3",
+                IsGenericSelector = true,
+                FormatId = "bestaudio"
+            });
+
+            PlaylistFormats.Add(new FormatItem
+            {
+                Label = "🎵 Audio M4A",
+                IsAudio = true,
+                AudioOutputFormat = "m4a",
+                IsGenericSelector = true,
+                FormatId = "bestaudio[ext=m4a]/bestaudio"
+            });
         }
         #endregion
 
@@ -80,7 +192,7 @@ namespace WinTube.ViewModels
         { 
             if (string.IsNullOrWhiteSpace(Url))
             {
-                Status = "Ingresa una URL";
+                ShowError("Ingresa una URL de video.");
                 return;
             }
 
@@ -98,19 +210,48 @@ namespace WinTube.ViewModels
             {
                 Status = "Analizando video...";
 
-                var json = await _youtubeService.GetVideoJson(Url);
+                // Una sola extraccion: si la URL es una playlist devuelve una lista
+                // de entradas (ligera); si es un video devuelve toda su info.
+                var json = await _youtubeService.GetVideoJson(Url, includePlaylist: true, flatPlaylist: true);
 
-                var info = JsonSerializer.Deserialize<VideoInfo>(json);
+                var playlist = JsonSerializer.Deserialize(json, VideoJsonContext.Default.PlaylistInfo);
+                if (playlist != null && playlist.Type == "playlist" && playlist.Entries.Count > 0)
+                {
+                    // Playlist detectada: mostramos el panel de seleccion en la vista.
+                    PlaylistTitle = string.IsNullOrWhiteSpace(playlist.Title) ? "Playlist" : playlist.Title;
+
+                    var entries = new ObservableCollection<PlaylistEntryViewModel>();
+                    foreach (var entry in playlist.Entries)
+                    {
+                        var entryVm = new PlaylistEntryViewModel(entry);
+                        entryVm.PropertyChanged += PlaylistEntry_PropertyChanged;
+                        entries.Add(entryVm);
+                    }
+
+                    PlaylistEntries = entries;
+                    PlaylistCount = entries.Count;
+                    SelectedPlaylistCount = 0;
+                    AllPlaylistSelected = false;
+                    SelectedPlaylistFormat = PlaylistFormats.FirstOrDefault();
+                    IsPlaylistDetected = true;
+                    HasFormats = false;
+                    Status = $"Playlist detectada ({PlaylistCount} vídeos)";
+                    return;
+                }
+
+                var info = JsonSerializer.Deserialize(json, VideoJsonContext.Default.VideoInfo);
 
                 if (info == null)
                 {
-                    Status = "No se pudo leer el video";
+                    ShowError("No se pudo leer la información del video.");
                     return;
                 }
 
                 // Guardar datos básicos
                 Title = info.Title ?? "Sin título";
-                Thumbnail = await DownloadHelper.LoadFromUrl(info.Thumbnail!);
+                _thumbnailUrl = info.Thumbnail ?? "";
+                _thumbnailBytes = await DownloadHelper.LoadBytesFromUrl(info.Thumbnail!);
+                Thumbnail = DownloadHelper.CreateBitmap(_thumbnailBytes);
                 Status = "Video cargado";
 
                 // ==========================================
@@ -235,7 +376,7 @@ namespace WinTube.ViewModels
             }
             catch (Exception ex)
             {
-                Status = $"{ex.Message}";
+                ShowError(ex.Message);
                 HasFormats = false;
             }
             finally
@@ -248,10 +389,13 @@ namespace WinTube.ViewModels
         {
             Status = "";
             Title = "";
+            Thumbnail?.Dispose();
             Thumbnail = null;
+            _thumbnailBytes = null;
             SelectedFormat = null;
             Formats.Clear();
             HasFormats = false;
+            ResetPlaylistState();
         }
 
         // Command para agregar un video a la lista e iniciar el procesamiento
@@ -278,18 +422,122 @@ namespace WinTube.ViewModels
                 Title = Title,
                 Progress = 0,
                 Format = formatInfo,
-                Thumbnail = Thumbnail,
+                // Cada item recibe su propio Bitmap para poder liberarlo al quitarlo.
+                Thumbnail = DownloadHelper.CreateBitmap(_thumbnailBytes),
                 Status = DownloadStatus.InQueue,
-                SelectedFormat = SelectedFormat
+                SelectedFormat = SelectedFormat,
+                // La descarga usa la carpeta configurada por el usuario.
+                OutputFolder = this.OutputFolder,
+                ThumbnailUrl = _thumbnailUrl,
+                // Los errores de descarga se muestran en el modal global.
+                OnError = ShowError
             };
 
-            // Le decimos qué hacer cuando ejecute su Removecommand
-            newItem.OnRemoveRequested = (item) => Downloads.Remove(item);
-
+            WireItem(newItem);
             Downloads.Add(newItem);
 
             // Intentamos iniciar la colo (si ya esta corriendo, no hace nada)
             _ = ProccessQueueAsync();           
+        }
+
+        // Añade los videos marcados de la playlist, con el formato global elegido.
+        [RelayCommand(CanExecute = nameof(CanAddSelectedPlaylistToQueue))]
+        private void AddSelectedPlaylistToQueue()
+        {
+            if (SelectedPlaylistFormat == null) return;
+
+            var format = SelectedPlaylistFormat;
+            string label = format.Label;
+
+            foreach (var entry in PlaylistEntries.Where(e => e.IsSelected).ToList())
+            {
+                var item = new DownloadItemViewModel
+                {
+                    Url = entry.Url,
+                    Title = entry.Title,
+                    Progress = 0,
+                    Format = label,
+                    Status = DownloadStatus.InQueue,
+                    SelectedFormat = format,
+                    OutputFolder = this.OutputFolder,
+                    ThumbnailUrl = entry.ThumbnailUrl,
+                    OnError = ShowError
+                };
+
+                WireItem(item);
+                Downloads.Add(item);
+
+                // Miniatura por entrada (con concurrencia limitada para no saturar).
+                if (!string.IsNullOrWhiteSpace(entry.ThumbnailUrl))
+                {
+                    _ = LoadThumbnailAsync(item, entry.ThumbnailUrl);
+                }
+            }
+
+            ResetPlaylistState();
+            _ = ProccessQueueAsync();
+        }
+
+        private bool CanAddSelectedPlaylistToQueue() =>
+            SelectedPlaylistCount > 0 && SelectedPlaylistFormat != null;
+
+        [RelayCommand]
+        private void CancelAddPlaylist()
+        {
+            ResetPlaylistState();
+        }
+
+        // Recalcula el contador al cambiar la seleccion de una entrada.
+        private void PlaylistEntry_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(PlaylistEntryViewModel.IsSelected)) return;
+
+            SelectedPlaylistCount = PlaylistEntries.Count(x => x.IsSelected);
+
+            // Refleja en el checkbox "Seleccionar todo" si ya estan todas marcadas,
+            // evitando recursion con OnAllPlaylistSelectedChanged.
+            if (!_syncingPlaylistSelection)
+            {
+                _syncingPlaylistSelection = true;
+                AllPlaylistSelected = PlaylistEntries.Count > 0
+                    && SelectedPlaylistCount == PlaylistEntries.Count;
+                _syncingPlaylistSelection = false;
+            }
+        }
+
+        // Marca/desmarca todas las entradas desde el checkbox "Seleccionar todo".
+        partial void OnAllPlaylistSelectedChanged(bool value)
+        {
+            if (_syncingPlaylistSelection) return;
+
+            _syncingPlaylistSelection = true;
+            foreach (var entry in PlaylistEntries)
+            {
+                entry.IsSelected = value;
+            }
+            _syncingPlaylistSelection = false;
+        }
+
+        partial void OnSelectedPlaylistCountChanged(int value) =>
+            AddSelectedPlaylistToQueueCommand.NotifyCanExecuteChanged();
+
+        partial void OnSelectedPlaylistFormatChanged(FormatItem? value) =>
+            AddSelectedPlaylistToQueueCommand.NotifyCanExecuteChanged();
+
+        private void ResetPlaylistState()
+        {
+            foreach (var entry in PlaylistEntries)
+            {
+                entry.PropertyChanged -= PlaylistEntry_PropertyChanged;
+            }
+
+            IsPlaylistDetected = false;
+            PlaylistTitle = "";
+            PlaylistCount = 0;
+            PlaylistEntries = new ObservableCollection<PlaylistEntryViewModel>();
+            SelectedPlaylistCount = 0;
+            AllPlaylistSelected = false;
+            SelectedPlaylistFormat = null;
         }
 
         /// <summary>
@@ -310,6 +558,13 @@ namespace WinTube.ViewModels
 
                     // Ejecutamos y es speramos a que complete, falle o se cancele
                     await nextDownload.StartDownloadAsync();                    
+
+                    // Si el usuario activo el borrado automatico, quitamos los completados.
+                    if (AutoRemoveCompleted && nextDownload.Status == DownloadStatus.Completed)
+                    {
+                        nextDownload.Dispose();
+                        Downloads.Remove(nextDownload);
+                    }
                 }
             }
             catch (Exception)
@@ -326,50 +581,267 @@ namespace WinTube.ViewModels
    
 
         [RelayCommand]
+        private async Task ChangeOutputFolder()
+        {
+            if (FolderPicker == null) return;
+
+            var path = await FolderPicker();
+            if (string.IsNullOrWhiteSpace(path)) return;
+
+            OutputFolder = path;
+            SaveSettings();
+        }
+
+        // Persiste la configuracion de usuario (carpeta de salida + preferencias).
+        private void SaveSettings()
+        {
+            _settingsService.Save(new AppSettings
+            {
+                OutputFolder = OutputFolder,
+                AutoRemoveCompleted = AutoRemoveCompleted
+            });
+        }
+
+        // Auto-guardado al cambiar "Borrar completados".
+        partial void OnAutoRemoveCompletedChanged(bool value) => SaveSettings();
+
+        [RelayCommand]
         private void ExploreOutputFolder()
         {
-            var pathFolder = PathHelper.GetDefaultOutputFolder();
-            if (string.IsNullOrEmpty(pathFolder)) return;
-
-            try
+            if (!ShellHelper.OpenFolder(OutputFolder))
             {
-                // Método simple que funciona en todas las plataformas
-                if (OperatingSystem.IsWindows())
-                {
-                    Process.Start("explorer.exe", $"\"{pathFolder}\"");
-                }
-                else if (OperatingSystem.IsMacOS())
-                {
-                    Process.Start("open", $"\"{pathFolder}\"");
-                }
-                else if (OperatingSystem.IsLinux())
-                {
-                    Process.Start("xdg-open", $"\"{pathFolder}\"");
-                }
-                //if (!Directory.Exists(pathFolder))
-                //{
-                //    Directory.CreateDirectory(pathFolder);
-                //}
-                //Process.Start(new ProcessStartInfo
-                //{
-                //    FileName = pathFolder,
-                //    UseShellExecute = true,
-                //    Verb = "open"
-                //});
-            }
-            catch (Exception ex)
-            {
-                Status = $"Error al abrir la carpeta: {ex.Message}";
+                ShowError("No se pudo abrir la carpeta de descarga.");
             }
         }
         #endregion
 
         #region Methods
-        private async Task StartDownloadAsync()
+
+        // Conecta los callbacks comunes de un item de descarga.
+        private void WireItem(DownloadItemViewModel item)
         {
-            throw new NotImplementedException();
+            item.OnRemoveRequested = (it) =>
+            {
+                it.Dispose();
+                Downloads.Remove(it);
+            };
+
+            // Al reanudar un item pausado/fallido volvemos a disparar el bucle de la cola.
+            item.OnResumeRequested = () => _ = ProccessQueueAsync();
+
+            // Persistimos la cola cuando cambia el estado de un item.
+            item.OnStatusChangedPersist = _ => RequestSaveQueue();
         }
 
+        // Carga la miniatura de un item de forma asincrona (no bloqueante).
+        private async Task LoadThumbnailAsync(DownloadItemViewModel item, string url)
+        {
+            await _thumbnailSemaphore.WaitAsync();
+            try
+            {
+                var bytes = await DownloadHelper.LoadBytesFromUrl(url);
+                item.Thumbnail = DownloadHelper.CreateBitmap(bytes);
+            }
+            catch
+            {
+                // Sin miniatura si falla la descarga de la imagen.
+            }
+            finally
+            {
+                _thumbnailSemaphore.Release();
+            }
+        }
+
+        // Solicita guardar la cola con debounce: agrupa rafagas de cambios en un solo guardado.
+        private void RequestSaveQueue()
+        {
+            if (_isRestoringQueue) return;
+
+            _saveDebounceTimer?.Stop();
+            _saveDebounceTimer?.Start();
+        }
+
+        // Detiene el debounce y guarda de inmediato (usado al cerrar la app).
+        private void FlushSaveQueue()
+        {
+            _saveDebounceTimer?.Stop();
+            SaveQueueNow();
+        }
+
+        // Construye la lista pendiente y la persiste (en segundo plano).
+        private void SaveQueueNow()
+        {
+            if (_isRestoringQueue) return;
+
+            DownloadJobList list;
+            try
+            {
+                list = BuildJobList();
+            }
+            catch
+            {
+                return;
+            }
+
+            // Coalescing: si ya hay un guardado en curso, marca pendiente y sale.
+            if (_saveInProgress)
+            {
+                _savePending = true;
+                return;
+            }
+
+            _saveInProgress = true;
+            Task.Run(() =>
+            {
+                try
+                {
+                    _queueService.Save(list);
+                }
+                finally
+                {
+                    _saveInProgress = false;
+
+                    if (_savePending)
+                    {
+                        _savePending = false;
+                        // Reintenta en el hilo UI para leer las propiedades con seguridad.
+                        Dispatcher.UIThread.Post(SaveQueueNow);
+                    }
+                }
+            });
+        }
+
+        // Lee el estado actual de la cola (debe ejecutarse en el hilo UI).
+        private DownloadJobList BuildJobList()
+        {
+            var list = new DownloadJobList();
+            foreach (var item in Downloads)
+            {
+                bool persist;
+                DownloadStatus status;
+
+                switch (item.Status)
+                {
+                    case DownloadStatus.InQueue:
+                    case DownloadStatus.Paused:
+                        persist = true;
+                        status = item.Status;
+                        break;
+                    case DownloadStatus.Downloading:
+                        // Al reabrir no hay proceso vivo: se reanuda desde InQueue.
+                        persist = true;
+                        status = DownloadStatus.InQueue;
+                        break;
+                    default:
+                        persist = false;
+                        status = item.Status;
+                        break;
+                }
+
+                if (!persist) continue;
+
+                var fmt = item.SelectedFormat;
+                list.Jobs.Add(new DownloadJob
+                {
+                    Id = item.Id,
+                    Url = item.Url,
+                    Title = item.Title,
+                    OutputFolder = item.OutputFolder,
+                    FormatId = fmt?.FormatId ?? "",
+                    Label = fmt?.Label ?? "",
+                    IsAudio = fmt?.IsAudio ?? false,
+                    Height = fmt?.Height,
+                    Width = fmt?.Width,
+                    Extension = fmt?.Extension ?? "",
+                    AudioOutputFormat = fmt?.AudioOutputFormat ?? "",
+                    AudioBitrate = fmt?.AudioBitrate ?? 0,
+                    HasAudio = fmt?.HasAudio ?? false,
+                    IsGenericSelector = fmt?.IsGenericSelector ?? false,
+                    ThumbnailUrl = item.ThumbnailUrl,
+                    Status = status
+                });
+            }
+
+            return list;
+        }
+
+        // Restaura la cola persistida de sesiones anteriores y reanuda el procesamiento.
+        private void RestoreQueue()
+        {
+            var saved = _queueService.Load();
+            if (saved.Jobs.Count == 0) return;
+
+            _isRestoringQueue = true;
+            try
+            {
+                foreach (var job in saved.Jobs)
+                {
+                    var item = CreateItemFromJob(job);
+                    Downloads.Add(item);
+                }
+            }
+            finally
+            {
+                _isRestoringQueue = false;
+            }
+
+            // La cola vuelve a persistirse conforme avance; limpiamos el archivo obsoleto.
+            _queueService.Clear();
+
+            // Reanudamos el procesamiento de los items restaurados.
+            _ = ProccessQueueAsync();
+        }
+
+        // Reconstruye un item de descarga a partir de un trabajo persistido.
+        private DownloadItemViewModel CreateItemFromJob(DownloadJob job)
+        {
+            FormatItem? fmt = null;
+            if (!string.IsNullOrWhiteSpace(job.FormatId)
+                || !string.IsNullOrWhiteSpace(job.Label)
+                || job.IsAudio)
+            {
+                fmt = new FormatItem
+                {
+                    FormatId = job.FormatId,
+                    Label = job.Label,
+                    IsAudio = job.IsAudio,
+                    Height = job.Height,
+                    Width = job.Width,
+                    Extension = job.Extension,
+                    AudioOutputFormat = job.AudioOutputFormat,
+                    AudioBitrate = job.AudioBitrate,
+                    HasAudio = job.HasAudio,
+                    IsGenericSelector = job.IsGenericSelector,
+                    IsSelected = true
+                };
+            }
+
+            var item = new DownloadItemViewModel
+            {
+                Id = job.Id,
+                Url = job.Url,
+                Title = string.IsNullOrWhiteSpace(job.Title) ? "Sin título" : job.Title,
+                Progress = 0,
+                Format = fmt?.Label ?? "Mejor disponible",
+                Status = job.Status == DownloadStatus.Paused
+                    ? DownloadStatus.Paused
+                    : DownloadStatus.InQueue,
+                SelectedFormat = fmt,
+                OutputFolder = string.IsNullOrWhiteSpace(job.OutputFolder) ? OutputFolder : job.OutputFolder,
+                ThumbnailUrl = job.ThumbnailUrl,
+                OnError = ShowError
+            };
+
+            WireItem(item);
+
+            // Recargamos la miniatura si se guardo su URL.
+            if (!string.IsNullOrWhiteSpace(job.ThumbnailUrl))
+            {
+                _ = LoadThumbnailAsync(item, job.ThumbnailUrl);
+            }
+
+            return item;
+        }
 
         private string GetQualityLabel(int height)
         {
@@ -642,10 +1114,11 @@ namespace WinTube.ViewModels
 
             try
             {
+                var uri = new Uri(url);
+
                 // Soporte para URLs de formato corto youtu.be
-                if (url.Contains("youtu.be/"))
+                if (uri.Host.Contains("youtu.be"))
                 {
-                    var uri = new Uri(url);
                     // El ID es el primer segmento de la ruta (eliminando el '/' inicial)
                     string videoId = uri.AbsolutePath.TrimStart('/');
 
@@ -655,29 +1128,50 @@ namespace WinTube.ViewModels
                         videoId = videoId.Split('?')[0];
                     }
 
+                    // Conservamos el parámetro list si forma parte de una playlist.
+                    string shortList = HttpUtility.ParseQueryString(uri.Query)["list"] ?? "";
+                    if (!string.IsNullOrEmpty(shortList))
+                    {
+                        return $"https://www.youtube.com/watch?v={videoId}&list={shortList}";
+                    }
+
                     return $"https://www.youtube.com/watch?v={videoId}";
+                }
+
+                // Playlist "pura" (youtube.com/playlist?list=...)
+                if (url.Contains("youtube.com/playlist"))
+                {
+                    var playlistParams = HttpUtility.ParseQueryString(uri.Query);
+                    string listId = playlistParams["list"] ?? "";
+                    if (!string.IsNullOrEmpty(listId))
+                    {
+                        return $"https://www.youtube.com/playlist?list={listId}";
+                    }
+                    return url;
                 }
 
                 // Soporte para URLs estándar (incluyendo m.youtube.com y www.youtube.com)
                 if (url.Contains("youtube.com/watch"))
                 {
-                    var uri = new Uri(url);
                     // Extraemos de forma segura los parámetros de la Query String (?v=...&list=...)
                     var queryParameters = HttpUtility.ParseQueryString(uri.Query);
                     string videoId = queryParameters["v"] ?? "";
+                    string listId = queryParameters["list"] ?? "";
 
                     if (!string.IsNullOrEmpty(videoId))
                     {
-                        // Devolvemos la URL limpia ÚNICAMENTE con el ID del video
-                        return $"https://www.youtube.com/watch?v={videoId}";
+                        // Conservamos la lista si el link apunta a una playlist.
+                        return string.IsNullOrEmpty(listId)
+                            ? $"https://www.youtube.com/watch?v={videoId}"
+                            : $"https://www.youtube.com/watch?v={videoId}&list={listId}";
                     }
                 }
 
                 // Soporte para Shorts (youtube.com/shorts/ID)
                 if (url.Contains("youtube.com/shorts/"))
                 {
-                    var uri = new Uri(url);
-                    string videoId = uri.AbsolutePath.Split('/').Last();
+                    var uri2 = new Uri(url);
+                    string videoId = uri2.AbsolutePath.Split('/').Last();
                     return $"https://www.youtube.com/watch?v={videoId}";
                 }
             }
@@ -693,13 +1187,26 @@ namespace WinTube.ViewModels
         private void Downloads_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {   
             base.OnPropertyChanged(nameof(IsDownloadsEmpty));
+            RequestSaveQueue();
         }
         #endregion
 
         public void Dispose()
         {
-            //_downloadService.ProgressChanged -= OnDownloadProgressChanged;
             Downloads.CollectionChanged -= Downloads_CollectionChanged;
+
+            // Volcamos de inmediato cualquier guardado pendiente del debounce.
+            FlushSaveQueue();
+
+            _thumbnailSemaphore.Dispose();
+
+            foreach (var item in Downloads)
+            {
+                item.Dispose();
+            }
+
+            Thumbnail?.Dispose();
+            Thumbnail = null;
         }
     }
 }

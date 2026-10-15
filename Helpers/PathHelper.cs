@@ -13,5 +13,12 @@ namespace WinTube.Helpers
         {
             return defaultOutputFolder;
         }
+
+        // Carpeta temporal por descarga donde yt-dlp deja los archivos .part
+        // (aqui se puede borrar el parcial al eliminar un item).
+        public static string GetPartialFolder(Guid id)
+        {
+            return Path.Combine(Path.GetTempPath(), "WinTube", id.ToString("N"));
+        }
     }
 }

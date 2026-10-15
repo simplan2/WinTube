@@ -5,176 +5,220 @@
         </Border>
     </Design.PreviewWith>
 
-
-
     <!--  Add Styles Here  -->
-    <!--  Estilo para botón principal (gradiente)  -->
+
+    <!--  Botón principal (gradiente de marca)  -->
     <Style Selector="Button.Primary">
-        <Setter Property="Background">
-            <LinearGradientBrush>
-                <GradientStop Offset="0" Color="#9B59B6" />
-                <GradientStop Offset="1" Color="#E91E63" />
-            </LinearGradientBrush>
-        </Setter>
-        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="Background" Value="{DynamicResource AccentGradient}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
         <Setter Property="FontWeight" Value="Bold" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Padding" Value="20,10" />
-        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="CornerRadius" Value="8" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="BorderThickness" Value="0" />
-
-        <!--  Efecto hover  -->
-        <Style.Animations>
-            <Animation Duration="0:0:0.2">
-                <KeyFrame Cue="0%">
-                    <Setter Property="Opacity" Value="1" />
-                </KeyFrame>
-                <KeyFrame Cue="100%">
-                    <Setter Property="Opacity" Value="0.9" />
-                </KeyFrame>
-            </Animation>
-        </Style.Animations>
     </Style>
 
-    <!--  Estilo para TextBox moderno  -->
+    <Style Selector="Button.Primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentGradient}" />
+        <Setter Property="Opacity" Value="0.9" />
+    </Style>
+
+    <Style Selector="Button.Primary:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentGradient}" />
+        <Setter Property="Opacity" Value="0.8" />
+    </Style>
+
+    <!--  Botón de acento (indigo)  -->
+    <Style Selector="Button.AccentButton">
+        <Setter Property="Background" Value="{DynamicResource AccentPrimary}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+
+    <Style Selector="Button.AccentButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryHover}" />
+    </Style>
+
+    <Style Selector="Button.AccentButton:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentSecondary}" />
+    </Style>
+
+    <!--  Botón de peligro  -->
+    <Style Selector="Button.DangerButton">
+        <Setter Property="Background" Value="{DynamicResource AccentDanger}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+
+    <Style Selector="Button.DangerButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentDangerHover}" />
+    </Style>
+
+    <!--  TextBox moderno  -->
     <Style Selector="TextBox.Modern">
-        <Setter Property="Background" Value="#070707" />
-        <Setter Property="Foreground" Value="#FFFFFF" />
-        <Setter Property="BorderBrush" Value="#3C3C3C" />
+        <Setter Property="Background" Value="{DynamicResource BackgroundInput}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDefault}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="CornerRadius" Value="10" />
         <Setter Property="Padding" Value="12,10" />
         <Setter Property="FontSize" Value="13" />
-
-        <!--  Focus effect  -->
-        <!--<Style Selector="TextBox.Modern:focus">
-        -->
-        <!--<Setter Property="BorderBrush" Value="#9B59B6" />-->
-        <!--
-        -->
-        <!--<Setter Property="BorderThickness" Value="2" />-->
-        <!--
-        </Style>-->
+        <Setter Property="CaretBrush" Value="{DynamicResource AccentPrimary}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource AccentPrimary}" />
     </Style>
 
-    <!--  Estilo para tarjetas  -->
+    <Style Selector="TextBox.Modern:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderLight}" />
+    </Style>
+
+    <Style Selector="TextBox.Modern:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimary}" />
+    </Style>
+
+    <!--  Tarjetas  -->
     <Style Selector="Border.Card">
-        <Setter Property="Background" Value="#2D2D2D" />
-        <Setter Property="CornerRadius" Value="10" />
-        <Setter Property="BorderBrush" Value="#3C3C3C" />
+        <Setter Property="Background" Value="{DynamicResource BackgroundCard}" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDefault}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Margin" Value="10" />
     </Style>
 
-    <!--  Estilo para botón de descarga (versión pequeña en lista)  -->
-    <Style Selector="Button.DownloadItem">
-        <Setter Property="Background" Value="#393A3C" />
-        <Setter Property="Foreground" Value="#FFFFFF" />
-        <Setter Property="FontSize" Value="11" />
-        <Setter Property="Padding" Value="8,4" />
-        <Setter Property="CornerRadius" Value="5" />
-        <Setter Property="Cursor" Value="Hand" />
-
-        <!--<Style Selector="Button.DownloadItem:pointerover">
-            <Setter Property="Background" Value="#E91E63" />
-        </Style>-->
-    </Style>
-
-    <!--  Estilo para ScrollBar  -->
-    <!--<Style Selector="ScrollBar">
-        <Setter Property="Background" Value="#252525" />
-    </Style>
-
-    <Style Selector="ScrollBar Thumb">
-        <Setter Property="Background" Value="#9B59B6" />
-        <Setter Property="CornerRadius" Value="5" />
-    </Style>-->
-
-    <Style Selector="Button.PauseButton">
-        <Setter Property="Background" Value="#FFB300" />
-        <Setter Property="Foreground" Value="White" />
-        <Setter Property="Padding" Value="12,6" />
-        <Setter Property="CornerRadius" Value="6" />
-        <Setter Property="FontWeight" Value="Bold" />
-    </Style>
-
-    <Style Selector="Button.PauseButton:pointerover">
-        <Setter Property="Background" Value="#FFC107" />
-    </Style>
-
-    <Style Selector="Button.CancelButton">
-        <Setter Property="Background" Value="#C62828" />
-        <Setter Property="Foreground" Value="White" />
-        <Setter Property="Padding" Value="12,6" />
-        <Setter Property="CornerRadius" Value="6" />
-        <Setter Property="FontWeight" Value="Bold" />
-    </Style>
-
-    <Style Selector="Button.CancelButton:pointerover">
-        <Setter Property="Background" Value="#E53935" />
-    </Style>
-
-    <Style Selector="Button.AccentButton">
-        <Setter Property="Background" Value="#0078D7" />
-        <Setter Property="Foreground" Value="White" />
-        <Setter Property="CornerRadius" Value="6" />
-    </Style>
-
-    <Style Selector="Button.DangerButton">
-        <Setter Property="Background" Value="#D83B01" />
-        <Setter Property="Foreground" Value="White" />
-        <Setter Property="CornerRadius" Value="6" />
-    </Style>
-
+    <!--  Botón de texto (sin fondo)  -->
     <Style Selector="Button.TextOnly">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="10,5" />
-		<Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="13" />
         <Setter Property="Cursor" Value="Hand" />
-		<Setter Property="Foreground">
-			<LinearGradientBrush>
-				<GradientStop Offset="0" Color="#949494" />
-				<GradientStop Offset="1" Color="#949494" />
-			</LinearGradientBrush>
-		</Setter>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
         <Setter Property="CornerRadius" Value="6" />
-        <!--  Template completamente limpio  -->
-        <!--<Setter Property="Template">
-            <ControlTemplate>
-                <ContentPresenter
-                    x:Name="PART_ContentPresenter"
-                    Padding="{TemplateBinding Padding}"
-                    HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                    VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
-                    Background="{TemplateBinding Background}"
-                    BorderBrush="{TemplateBinding BorderBrush}"
-                    BorderThickness="{TemplateBinding BorderThickness}"
-                    Content="{TemplateBinding Content}"
-                    ContentTemplate="{TemplateBinding ContentTemplate}" />
-            </ControlTemplate>
-        </Setter>-->
-
-        <!--  Forzar todos los estados a Transparent  -->
-        <Style Selector="^:pointerover">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-        </Style>
-
-        <Style Selector="^:pressed">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-        </Style>
-
-        <Style Selector="^:focus">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-        </Style>
     </Style>
 
+    <Style Selector="Button.TextOnly:pointerover">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentPrimary}" />
+    </Style>
+
+    <Style Selector="Button.TextOnly:pressed">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentSecondary}" />
+    </Style>
+
+    <!--  Boton de la barra de título  -->
+    <Style Selector="Button.control-btn">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.control-btn:pointerover">
+        <Setter Property="Background" Value="{DynamicResource BackgroundHover}" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button#CloseButton:pointerover">
+        <Setter Property="Background" Value="#E81123" />
+    </Style>
+
+    <Style Selector="Button.control-btn Path">
+        <Setter Property="Width" Value="12" />
+        <Setter Property="Height" Value="12" />
+    </Style>
+
+    <!--  Barra de progreso  -->
+    <Style Selector="ProgressBar">
+        <Setter Property="Foreground" Value="{DynamicResource ProgressValue}" />
+        <Setter Property="Background" Value="{DynamicResource ProgressBackground}" />
+    </Style>
+
+    <!--  Selección en listas  -->
     <Style Selector="ListBoxItem:selected /template/ Border#Bd">
-        <Setter Property="BorderBrush" Value="#4CAF50" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimary}" />
+    </Style>
+
+    <!--  CheckBox  -->
+	<Style Selector="CheckBox">
+		<Setter Property="BorderBrush" Value="{DynamicResource BorderDefault}" />
+		<Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+		<Setter Property="FontSize" Value="13" />
+		<Setter Property="Template">
+			<ControlTemplate>
+				<!-- CAMBIO CLAVE: ColumnDefinitions="Auto,*" -->
+				<Grid Margin="2" ColumnDefinitions="Auto,*">
+
+					<!-- El cuadro del check -->
+					<Border
+						Grid.Column="0"
+						x:Name="PART_Box"
+						Width="16"
+						Height="16"
+						Background="Transparent"
+						BorderBrush="{TemplateBinding BorderBrush}"
+						BorderThickness="1.4"
+						CornerRadius="2"
+						VerticalAlignment="Center">
+						<Viewbox
+							Width="11"
+							Height="11"
+							HorizontalAlignment="Center"
+							VerticalAlignment="Center">
+							<!-- La marca de verificación -->
+							<Path
+								x:Name="PART_CheckMark"
+								HorizontalAlignment="Center"
+								VerticalAlignment="Center"
+								Data="M 2,8 L 6,12 L 14,3"
+								IsVisible="False"
+								Stroke="White"
+								StrokeLineCap="Round"
+								StrokeThickness="2" />
+						</Viewbox>
+					</Border>
+
+					<!-- EL CONTENIDO -->
+					<ContentPresenter
+						Grid.Column="1"
+						Margin="7,0,0,0"
+						FontSize="{TemplateBinding FontSize}"
+						VerticalAlignment="Center"
+						Content="{TemplateBinding Content}"
+						TextTrimming="CharacterEllipsis"
+						TextWrapping="NoWrap"
+						Foreground="{TemplateBinding Foreground}" />
+				</Grid>
+			</ControlTemplate>
+		</Setter>
+	</Style>
+
+
+	<Style Selector="CheckBox:pointerover /template/ Border#PART_Box">
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderLight}" />
+    </Style>
+
+    <Style Selector="CheckBox:checked /template/ Border#PART_Box">
+        <Setter Property="Background" Value="{DynamicResource BackgroundHover}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrong}" />
+    </Style>
+
+    <Style Selector="CheckBox:checked:pointerover /template/ Border#PART_Box">
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrong}" />
+    </Style>
+
+    <Style Selector="CheckBox:checked /template/ Path#PART_CheckMark">
+        <Setter Property="IsVisible" Value="True" />
+    </Style>
+
+    <Style Selector="CheckBox:disabled">
+        <Setter Property="Opacity" Value="0.45" />
     </Style>
 </Styles>

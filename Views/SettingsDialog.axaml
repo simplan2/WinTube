@@ -1,0 +1,129 @@
+<Window
+    x:Class="WinTube.Views.SettingsDialog"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="clr-namespace:WinTube.ViewModels"
+    Title="Ajustes"
+    Width="520"
+    x:DataType="vm:MainViewModel"
+    Background="Transparent"
+    CanResize="False"
+    ShowInTaskbar="False"
+    SizeToContent="Height"
+    WindowDecorations="None"
+    WindowStartupLocation="CenterOwner">
+
+    <Border
+        Background="{DynamicResource BackgroundPrimary}"
+        BorderBrush="{DynamicResource WindowBorder}"
+        BorderThickness="1"
+        CornerRadius="8">
+        <Grid RowDefinitions="Auto,Auto,Auto">
+
+            <!--  Barra de título  -->
+            <Border
+                Grid.Row="0"
+                Background="{DynamicResource BackgroundBarTitle}"
+                CornerRadius="8,8,0,0"
+                PointerPressed="TitleBar_PointerPressed">
+                <Grid ColumnDefinitions="*,32" Margin="2,0">
+                    <TextBlock
+                        Margin="15,10"
+                        FontSize="13"
+                        FontWeight="SemiBold"
+                        Foreground="{DynamicResource TextPrimary}"
+                        Text="Ajustes" />
+                    <Button
+                        Name="CloseButton"
+                        Grid.Column="1"
+                        Classes="control-btn"
+                        Click="Close_Click">
+                        <Path
+                            Data="M1,1 L11,11 M11,1 L1,11"
+                            Stroke="White"
+                            StrokeThickness="1.5" />
+                    </Button>
+                </Grid>
+            </Border>
+
+            <StackPanel
+                Grid.Row="1"
+                Margin="20,18,20,0"
+                Spacing="18">
+
+                <!--  Carpeta de salida  -->
+                <StackPanel Spacing="8">
+                    <TextBlock
+                        FontSize="13"
+                        FontWeight="SemiBold"
+                        Foreground="{DynamicResource TextPrimary}"
+                        Text="Carpeta de salida" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <Border
+                            Grid.Column="0"
+                            Height="32"
+                            Background="{DynamicResource BackgroundInput}"
+                            BorderBrush="{DynamicResource BorderDefault}"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                            <TextBlock
+                                Margin="10,0"
+                                VerticalAlignment="Center"
+                                FontSize="12"
+                                Foreground="{DynamicResource TextTertiary}"
+                                Text="{Binding OutputFolder}"
+                                TextTrimming="CharacterEllipsis"
+                                TextWrapping="NoWrap"
+                                ToolTip.Tip="{Binding OutputFolder}" />
+                        </Border>
+                        <Button
+                            Grid.Column="1"
+                            Height="32"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            Command="{Binding ChangeOutputFolderCommand}"
+                            CornerRadius="6"
+                            ToolTip.Tip="Cambiar carpeta de descarga">
+                            <StackPanel
+                                VerticalAlignment="Center"
+                                Orientation="Horizontal"
+                                Spacing="8">
+                                <Path
+                                    Width="14"
+                                    Height="14"
+                                    Margin="0,2,0,0"
+                                    VerticalAlignment="Center"
+                                    Data="M40,43H8c-3.31,0-6-2.69-6-6V11c0-3.31,2.69-6,6-6h7.86c2.02,0,3.9,1.01,5.01,2.7l1.61,2.38c.39.59,1.03.93,1.7.92h15.82c3.31,0,6,2.69,6,6v20c0,3.31-2.69,6-6,6ZM8,9c-1.1,0-2,.9-2,2v26c0,1.1.9,2,2,2h32c1.1,0,2-.9,2-2v-20c0-1.1-.9-2-2-2h-15.8c-2.05.01-3.92-.99-5.05-2.7l-1.61-2.38c-.38-.58-1.01-.92-1.68-.92h-7.86Z"
+                                    Fill="{DynamicResource TextSecondary}"
+                                    Stretch="Uniform" />
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontSize="12"
+                                    Text="Cambiar" />
+                            </StackPanel>
+                        </Button>
+
+                    </Grid>
+                </StackPanel>
+
+                <!--  Descargas  -->
+                <StackPanel Spacing="8">
+                    <TextBlock
+                        FontSize="13"
+                        FontWeight="SemiBold"
+                        Foreground="{DynamicResource TextPrimary}"
+                        Text="Descargas" />
+                    <CheckBox Content="Borrar completados al terminar" IsChecked="{Binding AutoRemoveCompleted, Mode=TwoWay}" />
+                </StackPanel>
+            </StackPanel>
+
+            <Button
+                Grid.Row="2"
+                Margin="20"
+                HorizontalAlignment="Right"
+                Classes="Primary"
+                Click="Close_Click"
+                Content="Cerrar" />
+        </Grid>
+    </Border>
+</Window>

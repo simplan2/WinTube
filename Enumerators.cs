@@ -1,13 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace WinTube
+﻿namespace WinTube
 {
-    internal class Enumerators
-    {
-    }
-
     public enum DownloadStatus
     {
         NotStarted,

@@ -1,28 +1,54 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!--  Add Resources Here  -->
+    <!--  =========================================================  -->
+    <!--  WinTube · Identidad visual (Violeta / Índigo moderno)      -->
+    <!--  =========================================================  -->
 
-    <!--  Colores base  -->
-    <SolidColorBrush x:Key="BackgroundPrimary">#171717</SolidColorBrush>
-    <SolidColorBrush x:Key="BackgroundBarTitle">#000000</SolidColorBrush>
-    <SolidColorBrush x:Key="BackgroundSecondary">#252525</SolidColorBrush>
-    <SolidColorBrush x:Key="BackgroundCard">#2D2D2D</SolidColorBrush>
-    <SolidColorBrush x:Key="BackgroundHover">#3D3D3D</SolidColorBrush>
+    <!--  Acento global del sistema (afecta checkbox, radio, foco, progreso)  -->
+    <Color x:Key="SystemAccentColor">#6D5EF5</Color>
+    <Color x:Key="SystemAccentColorLight1">#887BF7</Color>
+    <Color x:Key="SystemAccentColorLight2">#A79CF9</Color>
+    <Color x:Key="SystemAccentColorLight3">#C5BEFB</Color>
+    <Color x:Key="SystemAccentColorDark1">#5648D8</Color>
+    <Color x:Key="SystemAccentColorDark2">#4538B8</Color>
+    <Color x:Key="SystemAccentColorDark3">#342A93</Color>
 
-    <!--Colores de texto-->  
-    <SolidColorBrush x:Key="TextPrimary">#FFFFFF</SolidColorBrush>
-    <SolidColorBrush x:Key="TextSecondary">#B3B3B3</SolidColorBrush>
-    <SolidColorBrush x:Key="TextTertiary">#808080</SolidColorBrush>
 
-      <!--Colores acento-->  
-    <SolidColorBrush x:Key="AccentPrimary">#9B59B6</SolidColorBrush>
-    <SolidColorBrush x:Key="AccentSecondary">#E91E63</SolidColorBrush>
-    <SolidColorBrush x:Key="AccentSuccess">#4CAF50</SolidColorBrush>
+    <!--  Degradado de marca (índigo -> magenta)  -->
+    <LinearGradientBrush x:Key="AccentGradient" StartPoint="0%,0%" EndPoint="100%,100%">
+        <GradientStop Offset="0" Color="#6D5EF5" />
+        <GradientStop Offset="1" Color="#C026D3" />
+    </LinearGradientBrush>
 
-      <!--Colores de progreso-->  
-    <SolidColorBrush x:Key="ProgressBackground">#3D3D3D</SolidColorBrush>
-    <SolidColorBrush x:Key="ProgressValue">#E91E63</SolidColorBrush>
+    <!--  Colores base / superficies  -->
+    <SolidColorBrush x:Key="BackgroundPrimary">#121218</SolidColorBrush>
+    <SolidColorBrush x:Key="BackgroundBarTitle">#0C0C11</SolidColorBrush>
+    <SolidColorBrush x:Key="BackgroundSecondary">#1A1A22</SolidColorBrush>
+    <SolidColorBrush x:Key="BackgroundCard">#1C1C25</SolidColorBrush>
+    <SolidColorBrush x:Key="BackgroundItem">#1E1E29</SolidColorBrush>
+    <SolidColorBrush x:Key="BackgroundInput">#0E0E14</SolidColorBrush>
+    <SolidColorBrush x:Key="BackgroundHover">#2A2A38</SolidColorBrush>
 
-      <!--Colores de borde-->  
-    <SolidColorBrush x:Key="BorderDefault">#3C3C3C</SolidColorBrush>
-    <SolidColorBrush x:Key="BorderLight">#4D4D4D</SolidColorBrush>
+    <!--  Colores de texto  -->
+    <SolidColorBrush x:Key="TextPrimary">#F4F4F8</SolidColorBrush>
+    <SolidColorBrush x:Key="TextSecondary">#A9A9BD</SolidColorBrush>
+    <SolidColorBrush x:Key="TextTertiary">#6E6E85</SolidColorBrush>
+
+    <!--  Colores de acento  -->
+    <SolidColorBrush x:Key="AccentPrimary">#6D5EF5</SolidColorBrush>
+    <SolidColorBrush x:Key="AccentPrimaryHover">#7E70F7</SolidColorBrush>
+    <SolidColorBrush x:Key="AccentSecondary">#C026D3</SolidColorBrush>
+    <SolidColorBrush x:Key="AccentSuccess">#22C55E</SolidColorBrush>
+    <SolidColorBrush x:Key="AccentWarning">#F59E0B</SolidColorBrush>
+    <SolidColorBrush x:Key="AccentDanger">#EF4444</SolidColorBrush>
+    <SolidColorBrush x:Key="AccentDangerHover">#F26363</SolidColorBrush>
+
+    <!--  Colores de progreso  -->
+    <SolidColorBrush x:Key="ProgressBackground">#2A2A38</SolidColorBrush>
+    <SolidColorBrush x:Key="ProgressValue">#6D5EF5</SolidColorBrush>
+
+    <!--  Colores de borde  -->
+    <SolidColorBrush x:Key="BorderDefault">#2C2C3A</SolidColorBrush>
+    <SolidColorBrush x:Key="BorderLight">#3A3A4C</SolidColorBrush>
+    <SolidColorBrush x:Key="BorderStrong">#44445A</SolidColorBrush>
+    <SolidColorBrush x:Key="WindowBorder">#06060A</SolidColorBrush>
 </ResourceDictionary>

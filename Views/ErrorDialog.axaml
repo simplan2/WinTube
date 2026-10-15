@@ -1,0 +1,76 @@
+<Window
+    x:Class="WinTube.Views.ErrorDialog"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Error"
+    Width="440"
+    SizeToContent="Height"
+    CanResize="False"
+    ShowInTaskbar="False"
+    WindowDecorations="None"
+    WindowStartupLocation="CenterOwner"
+    Background="Transparent">
+
+    <Border
+        Background="{DynamicResource BackgroundPrimary}"
+        BorderBrush="{DynamicResource WindowBorder}"
+        BorderThickness="1"
+        CornerRadius="8">
+        <Grid RowDefinitions="Auto,Auto,Auto">
+
+            <!--  Barra de título  -->
+            <Border
+                Grid.Row="0"
+                Background="{DynamicResource BackgroundBarTitle}"
+                CornerRadius="8,8,0,0"
+                PointerPressed="TitleBar_PointerPressed">
+				<Grid ColumnDefinitions="*,32">
+					<TextBlock
+				   Margin="15,10"
+				   FontSize="13"
+				   FontWeight="SemiBold"
+				   Foreground="{DynamicResource TextPrimary}"
+				   Text="Error" />
+
+					<Button
+					   Name="CloseButton"
+					   Grid.Column="1"
+					   Classes="control-btn"
+					   Click="Close_Click">
+						<Path
+                            Data="M1,1 L11,11 M11,1 L1,11"
+                            Stroke="White"
+                            StrokeThickness="1.5" />
+					</Button>
+				</Grid>
+            </Border>
+
+            <StackPanel
+                Grid.Row="1"
+                Margin="20,20,20,0"
+                Orientation="Horizontal"
+                Spacing="12">
+                <TextBlock
+                    VerticalAlignment="Top"
+                    FontSize="26"
+                    Foreground="{DynamicResource AccentWarning}"
+                    Text="⚠" />
+                <TextBlock
+                    x:Name="MessageText"
+                    MaxWidth="330"
+                    VerticalAlignment="Center"
+                    FontSize="13"
+                    Foreground="{DynamicResource TextSecondary}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+
+            <Button
+                Grid.Row="2"
+                Margin="20"
+                HorizontalAlignment="Right"
+                Classes="Primary"
+                Click="Close_Click"
+                Content="Aceptar" />
+        </Grid>
+    </Border>
+</Window>

@@ -24,5 +24,8 @@ namespace WinTube.Models
         public bool IsSelected { get; set; }
 
         public bool HasAudio { get; set; }
+
+        // Presets de playlist: FormatId es un selector -f generico (no atado a un video).
+        public bool IsGenericSelector { get; set; }
     }
 }

@@ -1,8 +1,6 @@
 ﻿using Avalonia.Data.Converters;
 using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Text;
 
 namespace WinTube.Converters
 {
@@ -12,8 +10,25 @@ namespace WinTube.Converters
         {
             if (value is DownloadStatus status)
             {
-                return status == DownloadStatus.Downloading ? true : false;
+                // Sin parametro mantenemos el comportamiento clasico: solo "Downloading".
+                if (parameter is not string raw || string.IsNullOrWhiteSpace(raw))
+                {
+                    return status == DownloadStatus.Downloading;
+                }
+
+                // El parametro es una lista separada por comas de estados permitidos.
+                foreach (var part in raw.Split(
+                    ',',
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    if (Enum.TryParse<DownloadStatus>(part, ignoreCase: true, out var allowed)
+                        && allowed == status)
+                    {
+                        return true;
+                    }
+                }
             }
+
             return false;
         }
 

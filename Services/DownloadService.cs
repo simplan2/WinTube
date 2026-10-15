@@ -2,12 +2,10 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
-using System.Runtime.Serialization;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using WinTube.Helpers;
 using WinTube.Models;
 
 namespace WinTube.Services
@@ -21,8 +19,9 @@ namespace WinTube.Services
     
         public async Task RunYtDlpAsync(
             string url,
-            FormatItem format,
+            FormatItem? format,
             string outputFolder,
+            Guid id,
             CancellationToken cancellationToken)
         {
             // forzamos el lanzamiento de la excepción si ya se pidió cancelar antes de empezar
@@ -38,26 +37,66 @@ namespace WinTube.Services
                 AppContext.BaseDirectory,
                 "Tools");
 
-            string arguments = "";
-            if (format.IsAudio)
+            // Construimos los argumentos como elementos separados para evitar
+            // problemas de quoting e inyeccion de argumentos.
+            var args = new List<string>();
+
+            // Los archivos .part van a una carpeta temporal por descarga; el archivo
+            // final se mueve a la carpeta de salida al terminar.
+            string tempFolder = PathHelper.GetPartialFolder(id);
+            Directory.CreateDirectory(tempFolder);
+
+            // Plantilla relativa: yt-dlp la resuelve contra la ruta "home".
+            string outputTemplate = "%(title)s.%(ext)s";
+
+            // Presets de playlist: el FormatId ya es un selector -f completo y generico.
+            if (format != null && format.IsGenericSelector)
+            {
+                if (format.IsAudio)
+                {
+                    outputFolder = Path.Combine(outputFolder, "Audio");
+                    if (format.AudioOutputFormat == "mp3")
+                    {
+                        args.Add("-f"); args.Add("bestaudio");
+                        args.Add("--extract-audio");
+                        args.Add("--audio-format"); args.Add("mp3");
+                        args.Add("--ffmpeg-location"); args.Add(ffmpegPath);
+                    }
+                    else
+                    {
+                        args.Add("-f"); args.Add(string.IsNullOrWhiteSpace(format.FormatId)
+                            ? "bestaudio"
+                            : format.FormatId);
+                        args.Add("--ffmpeg-location"); args.Add(ffmpegPath);
+                    }
+                }
+                else
+                {
+                    outputFolder = Path.Combine(outputFolder, "Video");
+                    args.Add("-f"); args.Add(string.IsNullOrWhiteSpace(format.FormatId)
+                        ? "bestvideo+bestaudio/best"
+                        : format.FormatId);
+                    args.Add("--merge-output-format"); args.Add("mp4");
+                    args.Add("--ffmpeg-location"); args.Add(ffmpegPath);
+                }
+                args.Add("--no-playlist");
+            }
+            else if (format != null && format.IsAudio)
             {
                 outputFolder = Path.Combine(outputFolder, "Audio");
+
                 if (format.AudioOutputFormat == "mp3")
                 {
-                    arguments =
-                        $"-f bestaudio " +
-                        $"--extract-audio " +
-                        $"--audio-format mp3 " +
-                        $"--ffmpeg-location \"{ffmpegPath}\" " +
-                        $"-o \"{outputFolder}\\%(title)s.%(ext)s\" " +
-                        $"\"{url}\"";
+                    args.Add("-f"); args.Add("bestaudio");
+                    args.Add("--extract-audio");
+                    args.Add("--audio-format"); args.Add("mp3");
+                    args.Add("--ffmpeg-location"); args.Add(ffmpegPath);
+                    args.Add("--no-playlist");
                 }
                 else if (format.AudioOutputFormat == "m4a" || format.AudioOutputFormat == "opus")
                 {
-                    arguments =
-                        $"-f {format.FormatId} " +
-                        $"-o \"{outputFolder}\\%(title)s.%(ext)s\" " +
-                        $"\"{url}\"";
+                    args.Add("-f"); args.Add(format.FormatId);
+                    args.Add("--no-playlist");
                 }
                 else
                 {
@@ -68,66 +107,106 @@ namespace WinTube.Services
             else
             {
                 outputFolder = Path.Combine(outputFolder, "Video");
-                // Si en tu FormatItem guardas si ya tiene audio o no (por ejemplo, si ACodec != "none")
-                if (format.HasAudio)
+
+                if (format == null || string.IsNullOrWhiteSpace(format.FormatId))
                 {
-                    // El video ya está completo. No necesitamos descargar otro audio ni usar FFmpeg.
-                    arguments =
-                        $"-f \"{format.FormatId}\" " +
-                        $"-o \"{outputFolder}\\%(title)s.%(ext)s\" " +
-                        $"\"{url}\"";
+                    // Sin formato elegido (p. ej. items de playlist): mejor calidad disponible.
+                    args.Add("-f"); args.Add("bestvideo+bestaudio/best");
+                    args.Add("--merge-output-format"); args.Add("mp4");
+                    args.Add("--ffmpeg-location"); args.Add(ffmpegPath);
+                    args.Add("--no-playlist");
+                }
+                // Si el formato ya trae audio integrado no hace falta descargar pista aparte.
+                else if (format.HasAudio)
+                {
+                    args.Add("-f"); args.Add(format.FormatId);
+                    args.Add("--no-playlist");
                 }
                 else
                 {
                     // Forzamos a que el audio se convierta a AAC y el contenedor final sea MP4
-                    arguments =
-                        $"-f \"{format.FormatId}+bestaudio/best\" " +
-                        $"--merge-output-format mp4 " +            // Contenedor final estricto MP4
-                        $"--recode-video mp4 " +                   // Asegura compatibilidad de video si es necesario
-                        $"--convert-subs srt " +                   // (Opcional) Por si descarga subtítulos
-                        $"--postprocessor-args \"ffmpeg:-c:a aac -b:a 192k\" " +
-                        $"--ffmpeg-location \"{ffmpegPath}\" " +
-                        $"-o \"{outputFolder}\\%(title)s.%(ext)s\" " +
-                        $"\"{url}\"";
+                    args.Add("-f"); args.Add($"{format.FormatId}+bestaudio/best");
+                    args.Add("--merge-output-format"); args.Add("mp4");
+                    args.Add("--recode-video"); args.Add("mp4");
+                    args.Add("--convert-subs"); args.Add("srt");
+                    args.Add("--postprocessor-args"); args.Add("ffmpeg:-c:a aac -b:a 192k");
+                    args.Add("--ffmpeg-location"); args.Add(ffmpegPath);
+                    args.Add("--no-playlist");
                 }
-            }          
+            }
+
+            // El archivo final va a la carpeta de salida; los .part, a la temporal del item.
+            args.Add("--paths"); args.Add($"home:{outputFolder}");
+            args.Add("--paths"); args.Add($"temp:{tempFolder}");
+            args.Add("-o"); args.Add(outputTemplate);
+
+            // Reanuda desde los archivos .part si la descarga se pauso antes.
+            args.Add("--continue");
+            // Progreso linea a linea (evita el uso de '\r' que complica la lectura).
+            args.Add("--newline");
+            args.Add(url);
 
             using var process = new Process();
             process.StartInfo = new ProcessStartInfo
             {
                 FileName = ytDlpPath,
-                Arguments = arguments,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
 
-            // REGISTRO DE CANCELACIÓN: Si el token se activa, matamos el proceso inmediatamente
-            using var registration = cancellationToken.Register(() => KillProcess(process));
-
-            // Leemos la salida en vivo para actualizar la barra de progreso
-            process.Start();
-            string? line;
-            while ((line = await process.StandardOutput.ReadLineAsync(cancellationToken)) != null)
+            foreach (var arg in args)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // Descartar lineas vacias que envia la consola de yt-dlp.exe
-                if (!string.IsNullOrWhiteSpace(line))
-                {                    
-                    ParseAndUpdateProgress(line);
-                }
+                process.StartInfo.ArgumentList.Add(arg);
             }
 
-            // Esperamos asíncronicamente a que el proceso de windows se cierre del todo
-            await process.WaitForExitAsync(cancellationToken);
+            // REGISTRO DE CANCELACIÓN: si el token se activa, matamos el proceso.
+            // Ojo: Cancel() invoca este callback de forma sincrona en el hilo que
+            // cancela (el de UI), asi que el Kill se hace en un hilo de fondo para
+            // no congelar la interfaz (Kill con todo el arbol puede tardar).
+            using var registration = cancellationToken.Register(() =>
+                Task.Run(() => KillProcess(process)));
 
-            // Si yt-dlp devuelve un código distinto de 0 (y no fue por una cancelación), algo salió mal
+            // Leemos la salida en vivo para actualizar la barra de progreso.
+            process.Start();
+
+            // IMPORTANTE: drenar stdout y stderr en paralelo. Si solo se lee stdout,
+            // el buffer de stderr puede llenarse (avisos de yt-dlp/ffmpeg) y el proceso
+            // se bloquea escribiendo, colgando la descarga en el post-procesado.
+            Task<string> stderrTask = process.StandardError.ReadToEndAsync();
+
+            string? line;
+            try
+            {
+                while ((line = await process.StandardOutput.ReadLineAsync(cancellationToken).ConfigureAwait(false)) != null)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    // Descartar lineas vacias que envia la consola de yt-dlp.exe
+                    if (!string.IsNullOrWhiteSpace(line))
+                    {                    
+                        ParseAndUpdateProgress(line);
+                    }
+                }
+
+                // Esperamos asíncronicamente a que el proceso de windows se cierre del todo
+                await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // Aseguramos que yt-dlp/ffmpeg terminaron del todo antes de propagar:
+                // asi el archivo .part queda liberado y se puede borrar/reanudar.
+                try { process.WaitForExit(5000); } catch { }
+                throw;
+            }
+
+            // Si yt-dlp devuelve un código distinto de 0 (y no fue por una cancelación), algo salió mal.
+            // Es un fallo esperado de yt-dlp, no un error critico.
             if (process.ExitCode != 0)
             {
-                string errorDetails = await process.StandardError.ReadToEndAsync(cancellationToken);
-                throw new Exception(errorDetails);
+                string errorDetails = await stderrTask.ConfigureAwait(false);
+                throw new DownloadFailedException(errorDetails);
             }        
         }
 
